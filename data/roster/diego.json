@@ -1,0 +1,270 @@
+{
+  "codigo_externo": "diego",
+  "schema_version": "seti-identity-v1",
+  "updated_at": "2026-08-27T14:45:16.351713+00:00",
+  "payload": {
+    "attendee": {
+      "id": "diego",
+      "firstName": "Diego",
+      "lastName": "",
+      "role": "Director de Planta",
+      "company": "Mavalle",
+      "sector": "Agroindustria",
+      "email": ""
+    },
+    "overallScore": 45,
+    "level": "EMERGENTE",
+    "axes": [
+      {
+        "id": "autoridad",
+        "label": "Autoridad de Marca",
+        "strategy": "ofensiva",
+        "score": 41,
+        "signal": "en_transicion"
+      },
+      {
+        "id": "riesgo",
+        "label": "Higiene y Gestión de Riesgo",
+        "strategy": "defensiva",
+        "score": 60,
+        "signal": "en_transicion"
+      }
+    ],
+    "quadrant": "presencia_pasiva",
+    "headline": "Director de Planta en Mavalle, con oportunidades de crecimiento en liderazgo de opinión y presencia en la industria agroindustrial",
+    "coverLines": [
+      "Perfil de LinkedIn actualizado y completo",
+      "Mención en comunicado corporativo de Mavalle",
+      "Trayectoria profesional sólida en el sector agroindustrial",
+      "Exposición de información de contacto en agregador de contactos"
+    ],
+    "dimensions": [
+      {
+        "id": "serp",
+        "number": 1,
+        "name": "Autoridad y Búsqueda (SERP)",
+        "shortName": "Búsqueda",
+        "indicator": "Resultados de las páginas 1 a 3 de Google al buscar su nombre y cargo.",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 40,
+        "level": "Oportunidad alta",
+        "signal": "en_transicion",
+        "lowSignal": "Solo aparece el directorio de su empresa o redes sociales inactivas.",
+        "highSignal": "Aparecen artículos de opinión, ponencias, paneles, prensa o un sitio web propio.",
+        "insight": "Listado en directorio y perfil de LinkedIn · Mención en comunicado corporativo",
+        "verdict": "Tú, Diego, apareces en el directorio de Mavalle y en tu perfil de LinkedIn, que muestra tu trayectoria profesional en el sector agroindustrial. Además, una publicación de Mavalle en Facebook te atribuye una frase, lo que indica cierta presencia en comunicaciones corporativas. Aunque no se encontraron artículos de opinión o ponencias tuyas, esta evidencia te acerca a una mayor visibilidad en comparación con la señal de bajo posicionamiento.",
+        "recommendation": "Incrementa tu presencia en medios y eventos de la industria agroindustrial.",
+        "recommendations": [
+          "Publica artículos de opinión en medios especializados en agroindustria.",
+          "Participa como panelista en eventos relevantes del sector.",
+          "Desarrolla un sitio web propio o una sección en el sitio de Mavalle para compartir tus conocimientos y experiencias."
+        ],
+        "note": null
+      },
+      {
+        "id": "ssi",
+        "number": 2,
+        "name": "Social Selling Index (SSI)",
+        "shortName": "SSI",
+        "indicator": "Indicador propio de LinkedIn (escala 1-100), enfocado en \"Establecer marca profesional\".",
+        "axis": "autoridad",
+        "measurement": "estimado",
+        "score": 40,
+        "level": "Oportunidad alta",
+        "signal": "en_transicion",
+        "lowSignal": "SSI inferior a 40 o un perfil que funciona como un currículum estático.",
+        "highSignal": "SSI superior a 70; el perfil actúa como un centro de pensamiento y liderazgo.",
+        "insight": "Perfil de LinkedIn con experiencia y cargos relevantes · No se encontró el SSI…",
+        "verdict": "Tu perfil de LinkedIn muestra una trayectoria profesional sólida en Mavalle y experiencia previa en AAK, con cargos que incluyen Director industrial y Jefe de operaciones. Aunque no se encontró el SSI directamente, la información disponible sugiere un perfil profesional completo. Sin embargo, no hay evidencia de que actúe como un centro de pensamiento y liderazgo más allá de su perfil y una mención en una publicación corporativa.",
+        "recommendation": "Mejora tu SSI actuando como un centro de pensamiento y liderazgo.",
+        "recommendations": [
+          "Publica artículos en LinkedIn sobre tendencias y desafíos en el sector agroindustrial.",
+          "Participa en discusiones relevantes en grupos de LinkedIn relacionados con la agroindustria.",
+          "Comparte contenido de valor en tu perfil de LinkedIn, como informes de investigación o análisis de mercado.",
+          "Conecta con otros líderes del sector y establece relaciones profesionales en LinkedIn."
+        ],
+        "note": "Score estimado por nosotros, no el Social Selling Index real de LinkedIn (es una métrica privada, visible solo para el titular de la cuenta). Se calculó usando, entre otras fuentes, un resultado público de búsqueda de tu LinkedIn (no una verificación directa de tu cuenta) y otras páginas web."
+      },
+      {
+        "id": "mensaje",
+        "number": 3,
+        "name": "Arquitectura del Mensaje",
+        "shortName": "Mensaje",
+        "indicator": "Coherencia semántica entre sus perfiles corporativos, redes y publicaciones.",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 55,
+        "level": "En desarrollo",
+        "signal": "en_transicion",
+        "lowSignal": "Comparte contenido corporativo sin añadir postura, opinión ni contexto propio.",
+        "highSignal": "Articula una visión clara y sistemática sobre los retos o el futuro de su industria.",
+        "insight": "Contenido corporativo con postura propia en redes · Ausencia de publicaciones…",
+        "verdict": "Se encontró una publicación de Mavalle en Facebook donde se atribuye una frase a Diego Sanchez, Director Planta Industrial, que muestra su postura sobre la transformación. Sin embargo, no hay evidencia de que haya publicado o sido entrevistado en prensa nacional independiente, publicaciones académicas o registros públicos. Su perfil de LinkedIn presenta su trayectoria profesional y experiencia en el sector.",
+        "recommendation": "Articular una visión clara y sistemática sobre los retos o el futuro de la agroindustria.",
+        "recommendations": [
+          "Publicar artículos de opinión en prensa nacional sobre tendencias en agroindustria.",
+          "Participar en entrevistas con medios especializados en el sector agroindustrial.",
+          "Desarrollar y presentar ponencias en congresos o seminarios relacionados con la agroindustria."
+        ],
+        "note": null
+      },
+      {
+        "id": "influencia",
+        "number": 4,
+        "name": "Grafo de Influencia",
+        "shortName": "Influencia",
+        "indicator": "Calidad de su red de contactos y nivel de debate (engagement de calidad).",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 30,
+        "level": "Oportunidad alta",
+        "signal": "bajo_posicionamiento",
+        "lowSignal": "Sus publicaciones solo interactúan con subordinados de su misma organización.",
+        "highSignal": "Debate e interactúa en público con analistas, competidores y líderes del sector.",
+        "insight": "Interacción limitada a su entorno laboral · Sin evidencia de debate público…",
+        "verdict": "La evidencia muestra que Diego Sanchez interactúa principalmente con su entorno laboral, como se ve en la publicación de Mavalle donde se le atribuye una frase. Sin embargo, no hay indicios de que participe en debates públicos con analistas, competidores o líderes del sector fuera de su organización. Su perfil de LinkedIn detalla su trayectoria profesional, pero no indica interacciones significativas con figuras externas relevantes.",
+        "recommendation": "Participa en debates públicos con analistas, competidores y líderes del sector.",
+        "recommendations": [
+          "Asiste a congresos del sector agroindustrial y participa en paneles de discusión.",
+          "Escribe artículos de opinión en medios especializados en agroindustria.",
+          "Interactúa con influencers y líderes del sector en redes sociales, compartiendo y comentando contenido relevante.",
+          "Organiza o participa en webinars o eventos virtuales que aborden temas relevantes para el sector."
+        ],
+        "note": null
+      },
+      {
+        "id": "higiene",
+        "number": 5,
+        "name": "Higiene y Riesgo Digital",
+        "shortName": "Higiene",
+        "indicator": "Exposición a suplantación (impersonation), brechas o contenido desactualizado.",
+        "axis": "riesgo",
+        "measurement": "observado",
+        "score": 60,
+        "level": "Fortaleza",
+        "signal": "en_transicion",
+        "lowSignal": "Cuentas abandonadas o información personal visible sin control de privacidad.",
+        "highSignal": "Separación nítida entre vida privada y esfera pública; blindaje contra suplantación.",
+        "insight": "Perfil de LinkedIn actualizado · Exposición en agregador de contactos",
+        "verdict": "Tu perfil de LinkedIn está actualizado y muestra una trayectoria sólida en el sector agroindustrial, lo que contribuye positivamente a tu higiene digital. Sin embargo, tu información de contacto está expuesta en un agregador de contactos, lo que representa un riesgo. Aunque no se encontraron cuentas abandonadas ni contenido desactualizado, la exposición en el agregador es un punto a mejorar para alcanzar un blindaje óptimo contra suplantación.",
+        "recommendation": "Reduce la exposición de tu información de contacto en agregadores.",
+        "recommendations": [
+          "Solicita la eliminación de tu información de contacto en el agregador de contactos identificado.",
+          "Revisa y ajusta las configuraciones de privacidad de tu perfil de LinkedIn para controlar quién puede ver tu información de contacto.",
+          "Considera utilizar un correo electrónico profesional en lugar de personal para tus registros profesionales y suscripciones.",
+          "Realiza un monitoreo periódico de tu presencia en agregadores y directorios para identificar y mitigar futuras exposiciones."
+        ],
+        "note": null
+      }
+    ],
+    "strengths": [
+      "Perfil profesional completo en LinkedIn",
+      "Presencia en comunicaciones corporativas de Mavalle"
+    ],
+    "opportunities": [
+      "Incrementar presencia en medios y eventos de la industria agroindustrial",
+      "Mejorar SSI actuando como centro de pensamiento y liderazgo",
+      "Articular una visión clara y sistemática sobre retos o futuro de la agroindustria",
+      "Reducir exposición de información de contacto en agregadores"
+    ],
+    "actionPlan": [
+      {
+        "order": 1,
+        "horizon": "Semana 1-2",
+        "tactic": "curaduria_pagina_2_3",
+        "action": "Reducir exposición de información de contacto en agregadores y unificar perfiles",
+        "dimensions": [
+          "higiene"
+        ]
+      },
+      {
+        "order": 2,
+        "horizon": "Mes 2",
+        "tactic": "criterio_sobre_amplificacion",
+        "action": "Compartir noticias de la industria con análisis propio",
+        "dimensions": [
+          "influencia",
+          "mensaje"
+        ]
+      },
+      {
+        "order": 3,
+        "horizon": "Mes 3",
+        "tactic": "profundidad_sobre_frecuencia",
+        "action": "Publicar análisis rigurosos sobre tendencias en la agroindustria",
+        "dimensions": [
+          "mensaje",
+          "influencia"
+        ]
+      },
+      {
+        "order": 4,
+        "horizon": "Mes 3",
+        "tactic": "activo_propio",
+        "action": "Desarrollar una plataforma propia para contenido de fondo",
+        "dimensions": [
+          "influencia",
+          "mensaje",
+          "higiene"
+        ]
+      }
+    ],
+    "network": [
+      {
+        "id": "n1",
+        "label": "rocketreach.co",
+        "sublabel": "Listado en directorio",
+        "kind": "par"
+      },
+      {
+        "id": "n2",
+        "label": "linkedin.com",
+        "sublabel": "Contenido de autoría propia",
+        "kind": "contenido"
+      },
+      {
+        "id": "n3",
+        "label": "www.facebook.com",
+        "sublabel": "Mención pública",
+        "kind": "prensa"
+      },
+      {
+        "id": "n4",
+        "label": "Mavalle",
+        "sublabel": "Vínculo interno a su empresa",
+        "kind": "par"
+      },
+      {
+        "id": "n5",
+        "label": "AAK",
+        "sublabel": "Vínculo externo",
+        "kind": "par"
+      },
+      {
+        "id": "n6",
+        "label": "rocketreach.co",
+        "sublabel": "Agregador con datos expuestos",
+        "kind": "contenido"
+      }
+    ],
+    "searchSteps": [
+      {
+        "source": "Web y publicaciones",
+        "finding": "3 evidencias públicas, 1 de autoría propia"
+      },
+      {
+        "source": "Verificación de identidad",
+        "finding": "Identidad confirmada"
+      },
+      {
+        "source": "Exposición de datos",
+        "finding": "Datos personales expuestos en rocketreach.co"
+      },
+      {
+        "source": "Análisis de huella",
+        "finding": "5 dimensiones sobre 2 ejes — Matriz de Diagnóstico Digital"
+      }
+    ]
+  }
+}

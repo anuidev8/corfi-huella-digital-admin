@@ -1,0 +1,264 @@
+{
+  "codigo_externo": "estrada",
+  "schema_version": "seti-identity-v1",
+  "updated_at": "2026-08-27T14:43:13.058981+00:00",
+  "payload": {
+    "attendee": {
+      "id": "estrada",
+      "firstName": "Estrada",
+      "lastName": "",
+      "role": "Gerente Financiero",
+      "company": "Pajonales, Mavalle y Unipalma",
+      "sector": "Agroindustria",
+      "email": ""
+    },
+    "overallScore": 46,
+    "level": "EMERGENTE",
+    "axes": [
+      {
+        "id": "autoridad",
+        "label": "Autoridad de Marca",
+        "strategy": "ofensiva",
+        "score": 42,
+        "signal": "en_transicion"
+      },
+      {
+        "id": "riesgo",
+        "label": "Higiene y Gestión de Riesgo",
+        "strategy": "defensiva",
+        "score": 60,
+        "signal": "en_transicion"
+      }
+    ],
+    "quadrant": "presencia_pasiva",
+    "headline": "Gerente Financiero en el sector agroindustrial, con oportunidades para fortalecer su presencia digital y liderazgo de opinión",
+    "coverLines": [
+      "Aparece en el directorio de Celsia Energía y en noticias relacionadas con cambios en la empresa.",
+      "Perfil de LinkedIn con referencias agroindustriales y trayectoria en varias empresas.",
+      "Menciones en documentos oficiales de Celsia, como miembro de la junta directiva y comités.",
+      "Cambio reciente de trabajo a Pajonales, Mavalle y Unipalma, aunque la evidencia pública aún refleja su cargo anterior en Celsia Energía."
+    ],
+    "dimensions": [
+      {
+        "id": "serp",
+        "number": 1,
+        "name": "Autoridad y Búsqueda (SERP)",
+        "shortName": "Búsqueda",
+        "indicator": "Resultados de las páginas 1 a 3 de Google al buscar su nombre y cargo.",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 60,
+        "level": "Fortaleza",
+        "signal": "en_transicion",
+        "lowSignal": "Solo aparece el directorio de su empresa o redes sociales inactivas.",
+        "highSignal": "Aparecen artículos de opinión, ponencias, paneles, prensa o un sitio web propio.",
+        "insight": "Presencia en directorio de empresa y menciones en noticias · Ausencia de…",
+        "verdict": "Tú, Francisco Estrada, apareces en el directorio de Celsia Energía y en noticias relacionadas con cambios en la empresa. Aunque no hay artículos de opinión o ponencias tuyas, tu presencia en el directorio y en noticias muestra cierta relevancia. Sin embargo, no alcanzas el nivel de alta influencia debido a la falta de contenido propio o de mayor exposición en medios.",
+        "recommendation": "Publica artículos de opinión en medios relevantes para aumentar tu visibilidad.",
+        "recommendations": [
+          "Escribe un artículo de opinión sobre tendencias en el sector agroindustrial para un medio de comunicación reconocido.",
+          "Participa en un panel o conferencia sobre finanzas en el sector agroindustrial.",
+          "Crea un sitio web propio o un blog para compartir tus perspectivas y experiencias.",
+          "Busca oportunidades para ser entrevistado en medios de comunicación relacionados con el sector."
+        ],
+        "note": null
+      },
+      {
+        "id": "ssi",
+        "number": 2,
+        "name": "Social Selling Index (SSI)",
+        "shortName": "SSI",
+        "indicator": "Indicador propio de LinkedIn (escala 1-100), enfocado en \"Establecer marca profesional\".",
+        "axis": "autoridad",
+        "measurement": "estimado",
+        "score": 40,
+        "level": "Oportunidad alta",
+        "signal": "en_transicion",
+        "lowSignal": "SSI inferior a 40 o un perfil que funciona como un currículum estático.",
+        "highSignal": "SSI superior a 70; el perfil actúa como un centro de pensamiento y liderazgo.",
+        "insight": "Perfil de LinkedIn con referencias agroindustriales · No se encontró el SSI…",
+        "verdict": "Tu perfil de LinkedIn muestra referencias a negocios agroindustriales y a empresas como Pajonales, Unipalma y Mavalle, lo que indica una presencia profesional. Sin embargo, no se encontró el valor directo de tu SSI ni información que permita inferir que actúa como un centro de pensamiento y liderazgo. Aunque tienes una trayectoria documentada en varias empresas y roles, la falta de información directa sobre tu SSI impide determinar si superas el umbral de 70.",
+        "recommendation": "Mejora tu SSI publicando contenido relevante y participando en discusiones de liderazgo en LinkedIn.",
+        "recommendations": [
+          "Publica artículos o comentarios sobre tendencias en agroindustria en LinkedIn.",
+          "Participa en grupos de discusión relacionados con finanzas y agroindustria.",
+          "Comparte contenido de otras fuentes relevantes y comenta sobre ellas.",
+          "Interactúa con otros líderes del sector comentando sus publicaciones."
+        ],
+        "note": "Score estimado por nosotros, no el Social Selling Index real de LinkedIn (es una métrica privada, visible solo para el titular de la cuenta). Se calculó usando, entre otras fuentes, un resultado público de búsqueda de tu LinkedIn (no una verificación directa de tu cuenta) y otras páginas web."
+      },
+      {
+        "id": "mensaje",
+        "number": 3,
+        "name": "Arquitectura del Mensaje",
+        "shortName": "Mensaje",
+        "indicator": "Coherencia semántica entre sus perfiles corporativos, redes y publicaciones.",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 30,
+        "level": "Oportunidad alta",
+        "signal": "bajo_posicionamiento",
+        "lowSignal": "Comparte contenido corporativo sin añadir postura, opinión ni contexto propio.",
+        "highSignal": "Articula una visión clara y sistemática sobre los retos o el futuro de su industria.",
+        "insight": "Contenido corporativo sin opinión propia · Menciones en documentos oficiales",
+        "verdict": "Se encontraron menciones a Francisco Estrada Serrano en documentos oficiales de Celsia, como miembro de la junta directiva y comités, pero no se hallaron publicaciones o declaraciones que articulen una visión clara y sistemática sobre los retos o el futuro de la agroindustria. Su perfil de LinkedIn muestra referencias a negocios agroindustriales, pero sin fechas claras, y su cargo actual en Pajonales, Mavalle y Unipalma no está reflejado en las fuentes encontradas.",
+        "recommendation": "Articula una visión clara y sistemática sobre los retos o el futuro de la agroindustria.",
+        "recommendations": [
+          "Publica artículos de opinión en medios especializados sobre tendencias y desafíos en la agroindustria.",
+          "Participa en foros y paneles de discusión en eventos relevantes del sector para compartir tu perspectiva.",
+          "Desarrolla un blog o una sección en tu sitio web personal donde compartas tus reflexiones y análisis sobre la industria."
+        ],
+        "note": null
+      },
+      {
+        "id": "influencia",
+        "number": 4,
+        "name": "Grafo de Influencia",
+        "shortName": "Influencia",
+        "indicator": "Calidad de su red de contactos y nivel de debate (engagement de calidad).",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 40,
+        "level": "Oportunidad alta",
+        "signal": "en_transicion",
+        "lowSignal": "Sus publicaciones solo interactúan con subordinados de su misma organización.",
+        "highSignal": "Debate e interactúa en público con analistas, competidores y líderes del sector.",
+        "insight": "Interacción limitada a su junta directiva y comités internos · Sin evidencia…",
+        "verdict": "La evidencia muestra que Estrada interactúa principalmente con miembros de su junta directiva y comités internos en Celsia Energía, lo que indica una red de contactos limitada a su entorno laboral inmediato. Aunque su perfil de LinkedIn conserva referencias agroindustriales, no se encontró evidencia de debate público con analistas, competidores o líderes del sector. Tu posición actual y trayectoria previa sugieren potencial para expandir tu influencia más allá de tu organización.",
+        "recommendation": "Participa en debates públicos del sector agroindustrial.",
+        "recommendations": [
+          "Asiste a congresos y paneles de agroindustria para establecer contactos y debatir temas relevantes.",
+          "Publica artículos de opinión en medios especializados en el sector agroindustrial.",
+          "Interactúa con analistas y líderes del sector en redes sociales profesionales como LinkedIn y Twitter."
+        ],
+        "note": null
+      },
+      {
+        "id": "higiene",
+        "number": 5,
+        "name": "Higiene y Riesgo Digital",
+        "shortName": "Higiene",
+        "indicator": "Exposición a suplantación (impersonation), brechas o contenido desactualizado.",
+        "axis": "riesgo",
+        "measurement": "observado",
+        "score": 60,
+        "level": "Fortaleza",
+        "signal": "en_transicion",
+        "lowSignal": "Cuentas abandonadas o información personal visible sin control de privacidad.",
+        "highSignal": "Separación nítida entre vida privada y esfera pública; blindaje contra suplantación.",
+        "insight": "Perfil de LinkedIn con información parcialmente desactualizada · Presencia en…",
+        "verdict": "Tu perfil de LinkedIn muestra referencias agroindustriales no fechadas junto a un cargo anterior en Celsia Energía, lo que podría indicar desactualización parcial. Sin embargo, tu presencia en documentos oficiales de Celsia y tu rol en comités de Auditoría y Finanzas y de Sostenibilidad y Buen Gobierno Corporativo reflejan una trayectoria sólida y una separación nítida entre tu vida privada y esfera pública. Aunque hay indicios de desactualización, tu perfil profesional en LinkedIn y tu participación en comités corporativos sugieren un manejo adecuado de tu imagen digital.",
+        "recommendation": "Actualiza tu perfil de LinkedIn para reflejar tu cargo y empresa actuales.",
+        "recommendations": [
+          "Revisa y actualiza la información de tu perfil de LinkedIn para asegurarte de que refleje tu cargo y empresa actuales.",
+          "Verifica la configuración de privacidad de tu perfil de LinkedIn para asegurarte de que la información sensible esté protegida.",
+          "Considera solicitar recomendaciones en LinkedIn de colegas o superiores que puedan respaldar tu experiencia y habilidades en el sector agroindustrial."
+        ],
+        "note": null
+      }
+    ],
+    "strengths": [
+      "Presencia en directorio de empresa y menciones en noticias.",
+      "Perfil de LinkedIn con referencias agroindustriales.",
+      "Menciones en documentos oficiales de Celsia."
+    ],
+    "opportunities": [
+      "Fortalecer presencia digital en el rol actual en Pajonales, Mavalle y Unipalma.",
+      "Articular una visión clara y sistemática sobre los retos o el futuro de la agroindustria.",
+      "Expandir influencia más allá de su organización actual."
+    ],
+    "actionPlan": [
+      {
+        "order": 1,
+        "horizon": "Semana 1-2",
+        "tactic": "curaduria_pagina_2_3",
+        "action": "Actualizar perfil de LinkedIn para reflejar cargo y empresa actuales.",
+        "dimensions": [
+          "higiene"
+        ]
+      },
+      {
+        "order": 2,
+        "horizon": "Mes 2",
+        "tactic": "criterio_sobre_amplificacion",
+        "action": "Publicar artículos de opinión en medios relevantes sobre temas agroindustriales.",
+        "dimensions": [
+          "serp",
+          "mensaje"
+        ]
+      },
+      {
+        "order": 3,
+        "horizon": "Mes 3",
+        "tactic": "profundidad_sobre_frecuencia",
+        "action": "Participar en debates públicos del sector agroindustrial y compartir análisis rigurosos.",
+        "dimensions": [
+          "influencia",
+          "ssi"
+        ]
+      }
+    ],
+    "network": [
+      {
+        "id": "n1",
+        "label": "LinkedIn",
+        "sublabel": "Perfil profesional referenciado",
+        "kind": "linkedin"
+      },
+      {
+        "id": "n2",
+        "label": "co.linkedin.com",
+        "sublabel": "Listado en directorio",
+        "kind": "par"
+      },
+      {
+        "id": "n3",
+        "label": "www.celsia.com",
+        "sublabel": "Documento oficial que lo menciona",
+        "kind": "prensa"
+      },
+      {
+        "id": "n4",
+        "label": "www.larepublica.co",
+        "sublabel": "Mención pública",
+        "kind": "prensa"
+      },
+      {
+        "id": "n5",
+        "label": "Luis Felipe Vélez Restrepo",
+        "sublabel": "Vínculo interno a su empresa",
+        "kind": "par"
+      },
+      {
+        "id": "n6",
+        "label": "Janeth Aparicio Aparicio",
+        "sublabel": "Vínculo interno a su empresa",
+        "kind": "par"
+      },
+      {
+        "id": "n7",
+        "label": "Santiago Arango Trujillo",
+        "sublabel": "Vínculo interno a su empresa",
+        "kind": "par"
+      }
+    ],
+    "searchSteps": [
+      {
+        "source": "Web y publicaciones",
+        "finding": "3 evidencias públicas, 0 de autoría propia"
+      },
+      {
+        "source": "Verificación de identidad",
+        "finding": "Identidad confirmada"
+      },
+      {
+        "source": "Discrepancias",
+        "finding": "3 diferencias entre lo declarado y lo publicado"
+      },
+      {
+        "source": "Análisis de huella",
+        "finding": "5 dimensiones sobre 2 ejes — Matriz de Diagnóstico Digital"
+      }
+    ]
+  }
+}

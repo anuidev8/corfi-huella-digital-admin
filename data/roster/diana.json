@@ -1,0 +1,253 @@
+{
+  "codigo_externo": "diana",
+  "schema_version": "seti-identity-v1",
+  "updated_at": "2026-08-27T14:46:21.523189+00:00",
+  "payload": {
+    "attendee": {
+      "id": "diana",
+      "firstName": "Diana",
+      "lastName": "",
+      "role": "Directora Comercial",
+      "company": "Mavalle",
+      "sector": "Agroindustria",
+      "email": ""
+    },
+    "overallScore": 42,
+    "level": "EMERGENTE",
+    "axes": [
+      {
+        "id": "autoridad",
+        "label": "Autoridad de Marca",
+        "strategy": "ofensiva",
+        "score": 35,
+        "signal": "bajo_posicionamiento"
+      },
+      {
+        "id": "riesgo",
+        "label": "Higiene y Gestión de Riesgo",
+        "strategy": "defensiva",
+        "score": 70,
+        "signal": "alta_influencia"
+      }
+    ],
+    "quadrant": "profesional_discreto",
+    "headline": "Directora Comercial en Mavalle, con oportunidades para fortalecer su presencia en la industria agroindustrial",
+    "coverLines": [
+      "Perfil de LinkedIn activo y actualizado",
+      "Mención en comunicado corporativo de Mavalle",
+      "Trayectoria laboral detallada en Mavalle",
+      "Presencia digital controlada y profesional"
+    ],
+    "dimensions": [
+      {
+        "id": "serp",
+        "number": 1,
+        "name": "Autoridad y Búsqueda (SERP)",
+        "shortName": "Búsqueda",
+        "indicator": "Resultados de las páginas 1 a 3 de Google al buscar su nombre y cargo.",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 40,
+        "level": "Oportunidad alta",
+        "signal": "en_transicion",
+        "lowSignal": "Solo aparece el directorio de su empresa o redes sociales inactivas.",
+        "highSignal": "Aparecen artículos de opinión, ponencias, paneles, prensa o un sitio web propio.",
+        "insight": "Perfil de LinkedIn activo · Mención en comunicado corporativo",
+        "verdict": "Tienes un perfil de LinkedIn con información detallada sobre tu trayectoria en Mavalle y formación académica, lo que muestra una presencia profesional en línea. Además, una publicación corporativa de Mavalle te identifica como Directora Comercial. Aunque no hay artículos de opinión o ponencias, esta presencia en LinkedIn y la mención en el comunicado corporativo te acercan a una mayor visibilidad.",
+        "recommendation": "Incrementa tu presencia en medios y eventos de la industria agroindustrial.",
+        "recommendations": [
+          "Publica artículos de opinión en medios especializados en agroindustria.",
+          "Participa como panelista o ponente en eventos relevantes del sector.",
+          "Desarrolla un sitio web propio o una sección en el sitio de Mavalle para compartir tus perspectivas y experiencias."
+        ],
+        "note": null
+      },
+      {
+        "id": "ssi",
+        "number": 2,
+        "name": "Social Selling Index (SSI)",
+        "shortName": "SSI",
+        "indicator": "Indicador propio de LinkedIn (escala 1-100), enfocado en \"Establecer marca profesional\".",
+        "axis": "autoridad",
+        "measurement": "estimado",
+        "score": 40,
+        "level": "Oportunidad alta",
+        "signal": "en_transicion",
+        "lowSignal": "SSI inferior a 40 o un perfil que funciona como un currículum estático.",
+        "highSignal": "SSI superior a 70; el perfil actúa como un centro de pensamiento y liderazgo.",
+        "insight": "Perfil de LinkedIn con experiencia laboral detallada · No se encontró el SSI…",
+        "verdict": "Tienes un perfil de LinkedIn público con una trayectoria laboral detallada en Mavalle, lo que sugiere una presencia profesional establecida. Aunque no se encontró el SSI directamente, la información disponible indica una marca profesional en construcción. Para alcanzar una alta influencia, considera potenciar tu perfil con contenido propio y participación en debates del sector agroindustrial.",
+        "recommendation": "Potencia tu perfil de LinkedIn con contenido propio y participación en debates del sector agroindustrial.",
+        "recommendations": [
+          "Publica artículos o posts sobre tendencias y desafíos en el sector agroindustrial.",
+          "Participa en grupos de discusión relevantes en LinkedIn, compartiendo tus insights y experiencias.",
+          "Comparte contenido de terceros relevante y comenta sobre él para iniciar conversaciones.",
+          "Colabora con otros profesionales del sector en proyectos o iniciativas conjuntas y promóvelos en tu perfil."
+        ],
+        "note": "Score estimado por nosotros, no el Social Selling Index real de LinkedIn (es una métrica privada, visible solo para el titular de la cuenta). Se calculó usando, entre otras fuentes, un resultado público de búsqueda de tu LinkedIn (no una verificación directa de tu cuenta) y otras páginas web."
+      },
+      {
+        "id": "mensaje",
+        "number": 3,
+        "name": "Arquitectura del Mensaje",
+        "shortName": "Mensaje",
+        "indicator": "Coherencia semántica entre sus perfiles corporativos, redes y publicaciones.",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 30,
+        "level": "Oportunidad alta",
+        "signal": "bajo_posicionamiento",
+        "lowSignal": "Comparte contenido corporativo sin añadir postura, opinión ni contexto propio.",
+        "highSignal": "Articula una visión clara y sistemática sobre los retos o el futuro de su industria.",
+        "insight": "Contenido corporativo sin postura propia · Perfil de LinkedIn con trayectoria…",
+        "verdict": "La evidencia muestra que Diana comparte contenido corporativo sin añadir postura propia, como se ve en la publicación de Instagram de Mavalle S.A.S. donde se le atribuye una frase sin contexto adicional. Sin embargo, su perfil de LinkedIn ofrece una trayectoria detallada que podría sugerir una presencia profesional estructurada. Aun así, no se encontraron publicaciones o declaraciones que articulen una visión clara y sistemática sobre los retos o el futuro de la agroindustria.",
+        "recommendation": "Articula una visión clara y sistemática sobre los retos o el futuro de la agroindustria.",
+        "recommendations": [
+          "Publica artículos de opinión en medios especializados en agroindustria.",
+          "Participa en paneles de discusión en eventos relevantes del sector.",
+          "Desarrolla un blog personal o en una plataforma reconocida para compartir sus perspectivas.",
+          "Comparte contenido propio en redes sociales, como LinkedIn, con un enfoque en su visión y análisis de la industria."
+        ],
+        "note": null
+      },
+      {
+        "id": "influencia",
+        "number": 4,
+        "name": "Grafo de Influencia",
+        "shortName": "Influencia",
+        "indicator": "Calidad de su red de contactos y nivel de debate (engagement de calidad).",
+        "axis": "autoridad",
+        "measurement": "observado",
+        "score": 30,
+        "level": "Oportunidad alta",
+        "signal": "bajo_posicionamiento",
+        "lowSignal": "Sus publicaciones solo interactúan con subordinados de su misma organización.",
+        "highSignal": "Debate e interactúa en público con analistas, competidores y líderes del sector.",
+        "insight": "Publicación corporativa con frase atribuida · Sin debate público con analistas…",
+        "verdict": "La evidencia muestra que Diana Sánchez, Directora Comercial de Mavalle, tiene una presencia limitada en redes sociales y directorios profesionales. Su perfil de LinkedIn muestra su trayectoria en Mavalle y formación académica, pero no hay indicios de debate público con analistas, competidores o líderes del sector. La publicación en Instagram es corporativa y no refleja interacción con otros actores relevantes.",
+        "recommendation": "Fomenta el debate público con analistas, competidores y líderes del sector agroindustrial.",
+        "recommendations": [
+          "Publica artículos de opinión en medios especializados del sector agroindustrial.",
+          "Participa en foros y paneles de discusión en eventos relevantes del sector.",
+          "Interactúa con analistas y competidores en redes sociales, comentando sus publicaciones y compartiendo contenido relevante.",
+          "Colabora en la creación de contenido conjunto con otros líderes del sector para aumentar la visibilidad y el debate."
+        ],
+        "note": null
+      },
+      {
+        "id": "higiene",
+        "number": 5,
+        "name": "Higiene y Riesgo Digital",
+        "shortName": "Higiene",
+        "indicator": "Exposición a suplantación (impersonation), brechas o contenido desactualizado.",
+        "axis": "riesgo",
+        "measurement": "observado",
+        "score": 70,
+        "level": "Fortaleza",
+        "signal": "alta_influencia",
+        "lowSignal": "Cuentas abandonadas o información personal visible sin control de privacidad.",
+        "highSignal": "Separación nítida entre vida privada y esfera pública; blindaje contra suplantación.",
+        "insight": "Perfil de LinkedIn profesional y actualizado · Sin cuentas abandonadas o…",
+        "verdict": "Tu perfil de LinkedIn es profesional y está actualizado, reflejando tu trayectoria en Mavalle y tu formación académica. La publicación corporativa de Mavalle en Instagram te identifica como Directora Comercial, lo que refuerza tu presencia digital controlada.",
+        "recommendation": "Refuerza la separación entre tu vida privada y esfera pública, y blindaje contra suplantación.",
+        "recommendations": [
+          "Revisa y ajusta la configuración de privacidad de tus redes sociales personales para asegurar que no se mezclen con tu presencia profesional.",
+          "Implementa autenticación de dos factores en todas tus cuentas profesionales y personales para prevenir suplantación.",
+          "Publica contenido propio en LinkedIn que refleje tu expertise en el sector de Agroindustria.",
+          "Monitorea regularmente tu presencia digital para detectar y abordar cualquier posible suplantación o exposición de información personal."
+        ],
+        "note": null
+      }
+    ],
+    "strengths": [
+      "Presencia profesional en LinkedIn",
+      "Trayectoria laboral detallada"
+    ],
+    "opportunities": [
+      "Fortalecer presencia en medios y eventos de la industria agroindustrial",
+      "Potenciar perfil de LinkedIn con contenido propio y participación en debates del sector",
+      "Articular una visión clara y sistemática sobre los retos o el futuro de la agroindustria"
+    ],
+    "actionPlan": [
+      {
+        "order": 1,
+        "horizon": "Semana 1-2",
+        "tactic": "curaduria_pagina_2_3",
+        "action": "Revisar y actualizar perfiles en redes sociales y directorios profesionales",
+        "dimensions": [
+          "higiene"
+        ]
+      },
+      {
+        "order": 2,
+        "horizon": "Mes 2",
+        "tactic": "criterio_sobre_amplificacion",
+        "action": "Compartir noticias y análisis del sector agroindustrial con criterio propio",
+        "dimensions": [
+          "mensaje",
+          "influencia"
+        ]
+      },
+      {
+        "order": 3,
+        "horizon": "Mes 3",
+        "tactic": "profundidad_sobre_frecuencia",
+        "action": "Publicar análisis rigurosos sobre la industria agroindustrial una o dos veces al mes",
+        "dimensions": [
+          "mensaje",
+          "influencia"
+        ]
+      },
+      {
+        "order": 4,
+        "horizon": "Mes 3",
+        "tactic": "activo_propio",
+        "action": "Desarrollar un sitio web o newsletter propio para construir archivo histórico y descentralizar la presencia digital",
+        "dimensions": [
+          "higiene",
+          "influencia"
+        ]
+      }
+    ],
+    "network": [
+      {
+        "id": "n1",
+        "label": "LinkedIn",
+        "sublabel": "Perfil profesional referenciado",
+        "kind": "linkedin"
+      },
+      {
+        "id": "n2",
+        "label": "www.instagram.com",
+        "sublabel": "Mención pública",
+        "kind": "prensa"
+      },
+      {
+        "id": "n3",
+        "label": "linkedin.com",
+        "sublabel": "Listado en directorio",
+        "kind": "par"
+      },
+      {
+        "id": "n4",
+        "label": "Mavalle S.A.S.",
+        "sublabel": "Vínculo interno a su empresa",
+        "kind": "par"
+      }
+    ],
+    "searchSteps": [
+      {
+        "source": "Web y publicaciones",
+        "finding": "2 evidencias públicas, 0 de autoría propia"
+      },
+      {
+        "source": "Verificación de identidad",
+        "finding": "Identidad confirmada"
+      },
+      {
+        "source": "Análisis de huella",
+        "finding": "5 dimensiones sobre 2 ejes — Matriz de Diagnóstico Digital"
+      }
+    ]
+  }
+}
