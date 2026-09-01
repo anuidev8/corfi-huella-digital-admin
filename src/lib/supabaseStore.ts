@@ -317,6 +317,30 @@ export async function sbIngestCorfilinkCheckIn(
     return { entry: mapCheckIn(active.data as CheckInRow), created: false };
   }
 
+  // If the user already completed their journey, do not re-queue them.
+  // Return the most recent done entry so the caller can report it without
+  // creating a duplicate queue entry.
+  const completed = await sb
+    .from("attendee_packages")
+    .select("journey_completed_at")
+    .eq("user_id", userId)
+    .not("journey_completed_at", "is", null)
+    .maybeSingle();
+  if (completed.error) throw new Error(completed.error.message);
+  if (completed.data) {
+    const doneEntry = await sb
+      .from("check_ins")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "done")
+      .order("completed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (doneEntry.data) {
+      return { entry: mapCheckIn(doneEntry.data as CheckInRow), created: false };
+    }
+  }
+
   // ── Upsert attendee_packages from API data when available ─────────────────
   if (apiData) {
     const ap = apiData.payload?.attendee as Record<string, unknown> | undefined;
@@ -528,7 +552,23 @@ export async function sbReleaseKiosk(
   const kioskRes = await sb.from("kiosks").select("*").eq("id", kioskId).single();
   if (kioskRes.error) throw new Error(kioskRes.error.message);
   const kiosk = kioskRes.data as KioskRow;
-  const uid = userId?.trim() || kiosk.current_user_id;
+
+  // Prefer the caller-supplied userId, then the kiosk's current occupant,
+  // then fall back to any active check_in on this kiosk (catches the case
+  // where a heartbeat already cleared current_user_id before release arrived).
+  let uid = userId?.trim() || kiosk.current_user_id;
+
+  if (!uid) {
+    const activeRes = await sb
+      .from("check_ins")
+      .select("user_id")
+      .eq("kiosk_id", kioskId)
+      .in("status", ["assigned", "in_session"])
+      .order("assigned_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    uid = (activeRes.data as { user_id: string } | null)?.user_id ?? null;
+  }
 
   if (uid) {
     await markJourneyComplete(sb, { userId: uid, kioskId });
@@ -566,21 +606,28 @@ export async function sbHeartbeatKiosk(args: {
   // Heartbeat reports presence/screen only. Never clear moderator assign
   // (userId null) — use /release when the session ends.
   if (args.userId) {
-    patch.current_user_id = args.userId;
-    patch.busy = "busy";
-    await sb
+    // Only re-occupy if the check_in is still active (not done/cancelled).
+    // This prevents heartbeats from re-occupying a kiosk after it was released.
+    const activeCheck = await sb
       .from("check_ins")
-      .update({ status: "in_session" })
+      .select("id, nombre, status")
       .eq("user_id", args.userId)
-      .eq("status", "assigned");
-    const q = await sb
-      .from("check_ins")
-      .select("nombre")
-      .eq("user_id", args.userId)
-      .in("status", ["assigned", "in_session"])
+      .in("status", ["pending", "assigned", "in_session"])
       .limit(1)
       .maybeSingle();
-    if (q.data?.nombre) patch.current_nombre = q.data.nombre as string;
+
+    if (activeCheck.data) {
+      patch.current_user_id = args.userId;
+      patch.busy = "busy";
+      if (activeCheck.data.status === "assigned") {
+        await sb
+          .from("check_ins")
+          .update({ status: "in_session" })
+          .eq("id", activeCheck.data.id);
+      }
+      if (activeCheck.data.nombre) patch.current_nombre = activeCheck.data.nombre as string;
+    }
+    // If no active check_in found, the session was released — ignore userId from heartbeat.
   }
 
   const upd = await sb

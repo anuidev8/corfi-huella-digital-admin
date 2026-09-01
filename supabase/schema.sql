@@ -87,6 +87,19 @@ begin
   alter publication supabase_realtime add table public.deliveries;
 exception when duplicate_object then null;
 end $$;
+do $$
+begin
+  alter publication supabase_realtime add table public.attendee_packages;
+exception when duplicate_object then null;
+end $$;
+
+-- REPLICA IDENTITY FULL is required so Supabase Realtime broadcasts UPDATE and
+-- DELETE events (not just INSERT). Without this the moderator board only sees
+-- new rows, not status changes.
+alter table public.check_ins replica identity full;
+alter table public.kiosks replica identity full;
+alter table public.deliveries replica identity full;
+alter table public.attendee_packages replica identity full;
 
 -- Open RLS for event demo (tighten later with service role / auth)
 alter table public.attendee_packages enable row level security;

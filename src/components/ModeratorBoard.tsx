@@ -12,10 +12,10 @@ import {
   type KioskRow,
 } from "@/lib/moderatorStateClient";
 
-/** Coalesce queue/delivery Realtime bursts into one refresh. */
-const REFRESH_DEBOUNCE_MS = 800;
-/** Only when Realtime is unavailable in the browser. */
+/** Fallback poll — only fires when Supabase Realtime is unavailable. */
 const POLL_FALLBACK_MS = 60_000;
+/** Coalesce Realtime bursts into one refresh. */
+const REFRESH_DEBOUNCE_MS = 800;
 
 async function fetchState(): Promise<ModeratorState> {
   const res = await fetch("/api/state", { cache: "no-store" });
@@ -62,25 +62,32 @@ export function ModeratorBoard() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [realtimeOk, setRealtimeOk] = useState<boolean | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const refreshTimerRef = useRef<number | null>(null);
   const realtimeOkRef = useRef<boolean | null>(null);
   realtimeOkRef.current = realtimeOk;
 
   const loadState = useCallback(async () => {
     const sb = getBrowserSupabase();
-    if (sb) {
-      return fetchModeratorStateFromSupabase(sb);
-    }
-    return fetchState();
+    const fetchPromise = sb
+      ? fetchModeratorStateFromSupabase(sb)
+      : fetchState();
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Tiempo de espera agotado (10 s)")), 10_000)
+    );
+    return Promise.race([fetchPromise, timeout]);
   }, []);
 
   const refresh = useCallback(async () => {
+    setRefreshing(true);
     try {
       const next = await loadState();
       setState(next);
       setError(null);
     } catch (e) {
-    setError(e instanceof Error ? e.message : "Error al cargar");
+      setError(e instanceof Error ? e.message : "Error al cargar");
+    } finally {
+      setRefreshing(false);
     }
   }, [loadState]);
 
@@ -170,6 +177,8 @@ export function ModeratorBoard() {
     };
   }, [refresh, scheduleRefresh, patchKioskFromRealtime]);
 
+  // Fallback poll: only fires when Realtime is explicitly broken or the browser
+  // has no Supabase client at all. Realtime handles all normal updates.
   useEffect(() => {
     if (realtimeOk !== false) return;
     const id = window.setInterval(() => void refresh(), POLL_FALLBACK_MS);
@@ -334,38 +343,6 @@ export function ModeratorBoard() {
             type="button"
             disabled={busyKey !== null}
             onClick={() =>
-              void runAction("sync-all", () =>
-                fetch("/api/demo", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ action: "sync-all" }),
-                })
-              )
-            }
-            className="rounded border border-emerald-500 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-950 hover:bg-emerald-100 disabled:opacity-50"
-          >
-            Sincronizar lista + cola
-          </button>
-          <button
-            type="button"
-            disabled={busyKey !== null}
-            onClick={() =>
-              void runAction("seed", () =>
-                fetch("/api/demo", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ action: "seed" }),
-                })
-              )
-            }
-            className="rounded border border-stone-400 bg-white px-3 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-50"
-          >
-            Simular Corfilink
-          </button>
-          <button
-            type="button"
-            disabled={busyKey !== null}
-            onClick={() =>
               void runAction("reset", () =>
                 fetch("/api/demo", {
                   method: "POST",
@@ -380,10 +357,11 @@ export function ModeratorBoard() {
           </button>
           <button
             type="button"
+            disabled={refreshing}
             onClick={() => void refresh()}
-            className="rounded bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800"
+            className="rounded bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50"
           >
-            Actualizar
+            {refreshing ? "Actualizando…" : "Actualizar"}
           </button>
         </div>
       </header>
@@ -427,7 +405,7 @@ export function ModeratorBoard() {
 
           {pending.length === 0 && assigned.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-stone-500">
-              Aún no hay check-ins. Usa &quot;Simular Corfilink&quot; o envía un POST a{" "}
+              Aún no hay check-ins. Envía un POST al webhook{" "}
               <code className="rounded bg-stone-100 px-1 text-xs">
                 /api/webhooks/corfilink
               </code>
@@ -642,9 +620,7 @@ export function ModeratorBoard() {
         </div>
         {roster.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-stone-500">
-              Aún no hay paquetes. Haz clic en &quot;Sincronizar lista + cola&quot; para cargar desde{" "}
-              <code className="rounded bg-stone-100 px-1">data/roster.json</code>{" "}
-              en Supabase.
+              Aún no hay paquetes. Los paquetes se cargan automáticamente cuando llega un check-in vía webhook.
             </p>
         ) : (
           <ul className="grid gap-px bg-stone-100 sm:grid-cols-2 lg:grid-cols-4">

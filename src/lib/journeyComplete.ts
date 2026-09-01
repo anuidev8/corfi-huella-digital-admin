@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { updateAttendeeStatus } from "@/lib/attendeesApiClient";
 
 export async function ensureCheckInDone(
   sb: SupabaseClient,
@@ -22,7 +23,8 @@ export async function ensureCheckInDone(
         completed_at: args.completedAt,
         kiosk_id: args.kioskId,
       })
-      .eq("id", active.id);
+      .eq("id", active.id)
+      .select("id");
     if (res.error) throw new Error(res.error.message);
     return;
   }
@@ -36,7 +38,8 @@ export async function ensureCheckInDone(
         completed_at: args.completedAt,
         kiosk_id: args.kioskId,
       })
-      .eq("id", pending.id);
+      .eq("id", pending.id)
+      .select("id");
     if (res.error) throw new Error(res.error.message);
     return;
   }
@@ -94,4 +97,8 @@ export async function markJourneyComplete(
     })
     .eq("id", args.kioskId);
   if (kioskRes.error) throw new Error(kioskRes.error.message);
+
+  // Fire-and-forget: sync status to the external Attendees API.
+  // Does not throw — a failure here must never block the moderator flow.
+  void updateAttendeeStatus(userId, "completed");
 }

@@ -54,6 +54,36 @@ export function isAttendeesApiConfigured(): boolean {
 }
 
 /**
+ * Update the status of an attendee in the external Attendees API.
+ * status accepts only 'pending' or 'completed'.
+ * Returns true on success, false if the attendee was not found or API is not configured.
+ * Never throws — failures are logged and swallowed so they don't block the moderator flow.
+ */
+export async function updateAttendeeStatus(
+  attendeeId: string,
+  status: "pending" | "completed"
+): Promise<boolean> {
+  if (!isAttendeesApiConfigured()) return false;
+  try {
+    const res = await fetch(
+      `${baseUrl()}/attendees/update/${encodeURIComponent(attendeeId)}`,
+      {
+        method: "PATCH",
+        headers: headers(),
+        body: JSON.stringify({ status }),
+        cache: "no-store",
+      }
+    );
+    if (res.status === 404) return false;
+    if (!res.ok) throw new Error(`attendees_api_update_${res.status}`);
+    return true;
+  } catch (err) {
+    console.error("[attendees-api] updateAttendeeStatus failed:", err);
+    return false;
+  }
+}
+
+/**
  * Resolve a wristband NFC UID to an attendee_id.
  * Returns null when not found (404) or API is not configured.
  * Only the attendee_id is extracted here — call getAttendeeById for full data.

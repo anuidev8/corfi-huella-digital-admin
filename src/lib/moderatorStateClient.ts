@@ -158,8 +158,12 @@ export async function fetchModeratorStateFromSupabase(
   const queue = ((queueRes.data ?? []) as CheckInRow[]).map(mapCheckIn);
   const kiosks = ((kioskRes.data ?? []) as KioskRow[]).map(mapKioskRow);
 
+  // Only patch a kiosk that the DB says is free but has an orphaned check_in
+  // (e.g. server restarted mid-session). Never override a kiosk the DB marks
+  // as free with an active current_user_id — that means it was just released.
   for (const kiosk of kiosks) {
-    if (kiosk.busy === "busy" && kiosk.currentUserId) continue;
+    if (kiosk.busy === "busy") continue; // trust DB: already occupied
+    if (kiosk.currentUserId) continue;   // trust DB: just released (free, no user)
     const assigned = queue.find(
       (q) =>
         q.kioskId === kiosk.id &&

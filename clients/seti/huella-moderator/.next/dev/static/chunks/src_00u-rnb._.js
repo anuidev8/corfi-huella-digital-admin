@@ -16,8 +16,8 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
-/** Coalesce queue/delivery Realtime bursts into one refresh. */ const REFRESH_DEBOUNCE_MS = 800;
-/** Only when Realtime is unavailable in the browser. */ const POLL_FALLBACK_MS = 60_000;
+/** Fallback poll — only fires when Supabase Realtime is unavailable. */ const POLL_FALLBACK_MS = 60_000;
+/** Coalesce Realtime bursts into one refresh. */ const REFRESH_DEBOUNCE_MS = 800;
 async function fetchState() {
     const res = await fetch("/api/state", {
         cache: "no-store"
@@ -59,26 +59,36 @@ function ModeratorBoard() {
     const [busyKey, setBusyKey] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [notice, setNotice] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [realtimeOk, setRealtimeOk] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [refreshing, setRefreshing] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const refreshTimerRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
     const realtimeOkRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
     realtimeOkRef.current = realtimeOk;
     const loadState = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "ModeratorBoard.useCallback[loadState]": async ()=>{
             const sb = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$supabaseBrowser$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getBrowserSupabase"])();
-            if (sb) {
-                return (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$moderatorStateClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["fetchModeratorStateFromSupabase"])(sb);
-            }
-            return fetchState();
+            const fetchPromise = sb ? (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$moderatorStateClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["fetchModeratorStateFromSupabase"])(sb) : fetchState();
+            const timeout = new Promise({
+                "ModeratorBoard.useCallback[loadState]": (_, reject)=>setTimeout({
+                        "ModeratorBoard.useCallback[loadState]": ()=>reject(new Error("Tiempo de espera agotado (10 s)"))
+                    }["ModeratorBoard.useCallback[loadState]"], 10_000)
+            }["ModeratorBoard.useCallback[loadState]"]);
+            return Promise.race([
+                fetchPromise,
+                timeout
+            ]);
         }
     }["ModeratorBoard.useCallback[loadState]"], []);
     const refresh = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "ModeratorBoard.useCallback[refresh]": async ()=>{
+            setRefreshing(true);
             try {
                 const next = await loadState();
                 setState(next);
                 setError(null);
             } catch (e) {
                 setError(e instanceof Error ? e.message : "Error al cargar");
+            } finally{
+                setRefreshing(false);
             }
         }
     }["ModeratorBoard.useCallback[refresh]"], [
@@ -191,6 +201,8 @@ function ModeratorBoard() {
         scheduleRefresh,
         patchKioskFromRealtime
     ]);
+    // Fallback poll: only fires when Realtime is explicitly broken or the browser
+    // has no Supabase client at all. Realtime handles all normal updates.
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ModeratorBoard.useEffect": ()=>{
             if (realtimeOk !== false) return;
@@ -323,7 +335,7 @@ function ModeratorBoard() {
                                 children: "Huella Digital · Evento"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 296,
+                                lineNumber: 305,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -331,7 +343,7 @@ function ModeratorBoard() {
                                 children: "Moderador"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 299,
+                                lineNumber: 308,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -347,7 +359,7 @@ function ModeratorBoard() {
                                                 children: state.backend
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                lineNumber: 308,
+                                                lineNumber: 317,
                                                 columnNumber: 27
                                             }, this),
                                             state.backend === "supabase" ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -360,7 +372,7 @@ function ModeratorBoard() {
                                                         children: "realtime"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 314,
+                                                        lineNumber: 323,
                                                         columnNumber: 23
                                                     }, this) : realtimeOk === false ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                         className: "text-amber-700",
@@ -370,82 +382,44 @@ function ModeratorBoard() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 316,
+                                                        lineNumber: 325,
                                                         columnNumber: 23
                                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                         className: "text-stone-500",
                                                         children: "conectando…"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 323,
+                                                        lineNumber: 332,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                lineNumber: 310,
+                                                lineNumber: 319,
                                                 columnNumber: 19
                                             }, this) : null
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 306,
+                                        lineNumber: 315,
                                         columnNumber: 15
                                     }, this) : null,
                                     "."
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 302,
+                                lineNumber: 311,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 295,
+                        lineNumber: 304,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "flex flex-wrap items-center gap-2",
                         children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                type: "button",
-                                disabled: busyKey !== null,
-                                onClick: ()=>void runAction("sync-all", ()=>fetch("/api/demo", {
-                                            method: "POST",
-                                            headers: {
-                                                "Content-Type": "application/json"
-                                            },
-                                            body: JSON.stringify({
-                                                action: "sync-all"
-                                            })
-                                        })),
-                                className: "rounded border border-emerald-500 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-950 hover:bg-emerald-100 disabled:opacity-50",
-                                children: "Sincronizar lista + cola"
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 333,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                type: "button",
-                                disabled: busyKey !== null,
-                                onClick: ()=>void runAction("seed", ()=>fetch("/api/demo", {
-                                            method: "POST",
-                                            headers: {
-                                                "Content-Type": "application/json"
-                                            },
-                                            body: JSON.stringify({
-                                                action: "seed"
-                                            })
-                                        })),
-                                className: "rounded border border-stone-400 bg-white px-3 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-50",
-                                children: "Simular Corfilink"
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 349,
-                                columnNumber: 11
-                            }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                 type: "button",
                                 disabled: busyKey !== null,
@@ -462,29 +436,30 @@ function ModeratorBoard() {
                                 children: "Reiniciar"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 365,
+                                lineNumber: 342,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                 type: "button",
+                                disabled: refreshing,
                                 onClick: ()=>void refresh(),
-                                className: "rounded bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800",
-                                children: "Actualizar"
+                                className: "rounded bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50",
+                                children: refreshing ? "Actualizando…" : "Actualizar"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 381,
+                                lineNumber: 358,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 332,
+                        lineNumber: 341,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                lineNumber: 294,
+                lineNumber: 303,
                 columnNumber: 7
             }, this),
             (error || notice) && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -495,7 +470,7 @@ function ModeratorBoard() {
                         children: error
                     }, void 0, false, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 394,
+                        lineNumber: 372,
                         columnNumber: 13
                     }, this),
                     notice && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -503,13 +478,13 @@ function ModeratorBoard() {
                         children: notice
                     }, void 0, false, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 399,
+                        lineNumber: 377,
                         columnNumber: 13
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                lineNumber: 392,
+                lineNumber: 370,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -520,7 +495,7 @@ function ModeratorBoard() {
                         value: String(pending.length)
                     }, void 0, false, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 407,
+                        lineNumber: 385,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -528,7 +503,7 @@ function ModeratorBoard() {
                         value: String(assigned.length)
                     }, void 0, false, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 408,
+                        lineNumber: 386,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -536,7 +511,7 @@ function ModeratorBoard() {
                         value: String(completed.length)
                     }, void 0, false, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 409,
+                        lineNumber: 387,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -545,13 +520,13 @@ function ModeratorBoard() {
                         hint: `${state?.kiosks.filter((k)=>k.status === "online").length ?? 0} en línea`
                     }, void 0, false, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 410,
+                        lineNumber: 388,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                lineNumber: 406,
+                lineNumber: 384,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -568,7 +543,7 @@ function ModeratorBoard() {
                                         children: "Cola"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 420,
+                                        lineNumber: 398,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -579,33 +554,33 @@ function ModeratorBoard() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 423,
+                                        lineNumber: 401,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 419,
+                                lineNumber: 397,
                                 columnNumber: 11
                             }, this),
                             pending.length === 0 && assigned.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "px-4 py-10 text-center text-sm text-stone-500",
                                 children: [
-                                    'Aún no hay check-ins. Usa "Simular Corfilink" o envía un POST a',
+                                    "Aún no hay check-ins. Envía un POST al webhook",
                                     " ",
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
                                         className: "rounded bg-stone-100 px-1 text-xs",
                                         children: "/api/webhooks/corfilink"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 431,
+                                        lineNumber: 409,
                                         columnNumber: 15
                                     }, this),
                                     "."
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 429,
+                                lineNumber: 407,
                                 columnNumber: 13
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                                 className: "divide-y divide-stone-100",
@@ -626,7 +601,7 @@ function ModeratorBoard() {
                                                                 children: entry.nombre
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                lineNumber: 445,
+                                                                lineNumber: 423,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -634,7 +609,7 @@ function ModeratorBoard() {
                                                                 children: entry.status === "done" ? "registrado" : entry.status === "pending" ? "pendiente" : entry.status === "assigned" ? "asignado" : entry.status === "in_session" ? "en sesión" : entry.status
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                lineNumber: 448,
+                                                                lineNumber: 426,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -645,13 +620,13 @@ function ModeratorBoard() {
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                lineNumber: 461,
+                                                                lineNumber: 439,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 444,
+                                                        lineNumber: 422,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -662,7 +637,7 @@ function ModeratorBoard() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 469,
+                                                        lineNumber: 447,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -676,13 +651,13 @@ function ModeratorBoard() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 473,
+                                                        lineNumber: 451,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                lineNumber: 443,
+                                                lineNumber: 421,
                                                 columnNumber: 19
                                             }, this),
                                             entry.status === "pending" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -692,7 +667,7 @@ function ModeratorBoard() {
                                                     children: "Sin kioscos libres en línea"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                    lineNumber: 482,
+                                                    lineNumber: 460,
                                                     columnNumber: 25
                                                 }, this) : freeOnline.map((k)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                                         type: "button",
@@ -706,29 +681,29 @@ function ModeratorBoard() {
                                                         ]
                                                     }, k.id, true, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 487,
+                                                        lineNumber: 465,
                                                         columnNumber: 27
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                lineNumber: 480,
+                                                lineNumber: 458,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, entry.id, true, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 439,
+                                        lineNumber: 417,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 437,
+                                lineNumber: 415,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 418,
+                        lineNumber: 396,
                         columnNumber: 9
                     }, this),
                     completed.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -741,12 +716,12 @@ function ModeratorBoard() {
                                     children: "Registrados"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                    lineNumber: 514,
+                                    lineNumber: 492,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 513,
+                                lineNumber: 491,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -762,7 +737,7 @@ function ModeratorBoard() {
                                                         children: entry.nombre
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 522,
+                                                        lineNumber: 500,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -770,13 +745,13 @@ function ModeratorBoard() {
                                                         children: "registrado"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 523,
+                                                        lineNumber: 501,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                lineNumber: 521,
+                                                lineNumber: 499,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -788,24 +763,24 @@ function ModeratorBoard() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                lineNumber: 525,
+                                                lineNumber: 503,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, entry.id, true, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 520,
+                                        lineNumber: 498,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 518,
+                                lineNumber: 496,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 512,
+                        lineNumber: 490,
                         columnNumber: 11
                     }, this) : null,
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -821,12 +796,12 @@ function ModeratorBoard() {
                                             children: "Dispositivos"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                            lineNumber: 541,
+                                            lineNumber: 519,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 540,
+                                        lineNumber: 518,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -844,7 +819,7 @@ function ModeratorBoard() {
                                                                         children: k.label
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                        lineNumber: 553,
+                                                                        lineNumber: 531,
                                                                         columnNumber: 23
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -852,7 +827,7 @@ function ModeratorBoard() {
                                                                         children: k.status === "online" ? "en línea" : k.status === "offline" ? "desconectado" : k.status
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                        lineNumber: 554,
+                                                                        lineNumber: 532,
                                                                         columnNumber: 23
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -860,13 +835,13 @@ function ModeratorBoard() {
                                                                         children: k.busy === "free" ? "libre" : k.busy === "busy" ? "ocupado" : k.busy
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                        lineNumber: 559,
+                                                                        lineNumber: 537,
                                                                         columnNumber: 23
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                lineNumber: 552,
+                                                                lineNumber: 530,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -877,7 +852,7 @@ function ModeratorBoard() {
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                lineNumber: 565,
+                                                                lineNumber: 543,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -890,13 +865,13 @@ function ModeratorBoard() {
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                                lineNumber: 571,
+                                                                lineNumber: 549,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 551,
+                                                        lineNumber: 529,
                                                         columnNumber: 19
                                                     }, this),
                                                     k.busy === "busy" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -915,24 +890,24 @@ function ModeratorBoard() {
                                                         children: "Liberar"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 583,
+                                                        lineNumber: 561,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, k.id, true, {
                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                lineNumber: 547,
+                                                lineNumber: 525,
                                                 columnNumber: 17
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 545,
+                                        lineNumber: 523,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 539,
+                                lineNumber: 517,
                                 columnNumber: 9
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -945,12 +920,12 @@ function ModeratorBoard() {
                                             children: "Registro de entregas"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                            lineNumber: 607,
+                                            lineNumber: 585,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 606,
+                                        lineNumber: 584,
                                         columnNumber: 13
                                     }, this),
                                     (state?.deliveries.length ?? 0) === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -958,7 +933,7 @@ function ModeratorBoard() {
                                         children: "Las asignaciones aparecerán aquí cuando un paquete sea enviado a un dispositivo."
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 612,
+                                        lineNumber: 590,
                                         columnNumber: 15
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                                         className: "max-h-56 divide-y divide-stone-100 overflow-auto",
@@ -974,7 +949,7 @@ function ModeratorBoard() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 620,
+                                                        lineNumber: 598,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -986,36 +961,36 @@ function ModeratorBoard() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                        lineNumber: 623,
+                                                        lineNumber: 601,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, d.id, true, {
                                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                                lineNumber: 619,
+                                                lineNumber: 597,
                                                 columnNumber: 19
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 617,
+                                        lineNumber: 595,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 605,
+                                lineNumber: 583,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 538,
+                        lineNumber: 516,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                lineNumber: 417,
+                lineNumber: 395,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -1029,7 +1004,7 @@ function ModeratorBoard() {
                                 children: "Lista de la app"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 636,
+                                lineNumber: 614,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1040,34 +1015,21 @@ function ModeratorBoard() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 639,
+                                lineNumber: 617,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 635,
+                        lineNumber: 613,
                         columnNumber: 9
                     }, this),
                     roster.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                         className: "px-4 py-8 text-center text-sm text-stone-500",
-                        children: [
-                            'Aún no hay paquetes. Haz clic en "Sincronizar lista + cola" para cargar desde',
-                            " ",
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
-                                className: "rounded bg-stone-100 px-1",
-                                children: "data/roster.json"
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 646,
-                                columnNumber: 15
-                            }, this),
-                            " ",
-                            "en Supabase."
-                        ]
-                    }, void 0, true, {
+                        children: "Aún no hay paquetes. Los paquetes se cargan automáticamente cuando llega un check-in vía webhook."
+                    }, void 0, false, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 644,
+                        lineNumber: 622,
                         columnNumber: 13
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                         className: "grid gap-px bg-stone-100 sm:grid-cols-2 lg:grid-cols-4",
@@ -1079,7 +1041,7 @@ function ModeratorBoard() {
                                         children: person.nombre
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 653,
+                                        lineNumber: 629,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1087,7 +1049,7 @@ function ModeratorBoard() {
                                         children: person.userId
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 654,
+                                        lineNumber: 630,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1095,7 +1057,7 @@ function ModeratorBoard() {
                                         children: person.company
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 657,
+                                        lineNumber: 633,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1108,39 +1070,39 @@ function ModeratorBoard() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                            lineNumber: 661,
+                                            lineNumber: 637,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                        lineNumber: 660,
+                                        lineNumber: 636,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, person.userId, true, {
                                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                                lineNumber: 652,
+                                lineNumber: 628,
                                 columnNumber: 15
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/src/components/ModeratorBoard.tsx",
-                        lineNumber: 650,
+                        lineNumber: 626,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                lineNumber: 634,
+                lineNumber: 612,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/ModeratorBoard.tsx",
-        lineNumber: 293,
+        lineNumber: 302,
         columnNumber: 5
     }, this);
 }
-_s(ModeratorBoard, "pfZv+N/sFsV411xZo8JlhFDjExE=");
+_s(ModeratorBoard, "xEMy7BM2u6BMbyqhlHDYqU3mDXc=");
 _c1 = ModeratorBoard;
 function StatCard({ label, value, hint }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1151,7 +1113,7 @@ function StatCard({ label, value, hint }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                lineNumber: 688,
+                lineNumber: 664,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1159,7 +1121,7 @@ function StatCard({ label, value, hint }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                lineNumber: 691,
+                lineNumber: 667,
                 columnNumber: 7
             }, this),
             hint ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1167,13 +1129,13 @@ function StatCard({ label, value, hint }) {
                 children: hint
             }, void 0, false, {
                 fileName: "[project]/src/components/ModeratorBoard.tsx",
-                lineNumber: 694,
+                lineNumber: 670,
                 columnNumber: 15
             }, this) : null
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/ModeratorBoard.tsx",
-        lineNumber: 687,
+        lineNumber: 663,
         columnNumber: 5
     }, this);
 }
@@ -1279,8 +1241,12 @@ async function fetchModeratorStateFromSupabase(sb) {
     }
     const queue = (queueRes.data ?? []).map(mapCheckIn);
     const kiosks = (kioskRes.data ?? []).map(mapKioskRow);
+    // Only patch a kiosk that the DB says is free but has an orphaned check_in
+    // (e.g. server restarted mid-session). Never override a kiosk the DB marks
+    // as free with an active current_user_id — that means it was just released.
     for (const kiosk of kiosks){
-        if (kiosk.busy === "busy" && kiosk.currentUserId) continue;
+        if (kiosk.busy === "busy") continue; // trust DB: already occupied
+        if (kiosk.currentUserId) continue; // trust DB: just released (free, no user)
         const assigned = queue.find((q)=>q.kioskId === kiosk.id && (q.status === "assigned" || q.status === "in_session"));
         if (!assigned) continue;
         kiosk.busy = "busy";
