@@ -44,6 +44,7 @@ export async function resolveAttendeeIdentity(
       nombre: [pkg.firstName, pkg.lastName].filter(Boolean).join(" ") || nombreRaw,
       company: pkg.company || empresa,
       resolvedBy: "direct_id",
+      apiData: null,
     };
   }
 
@@ -58,6 +59,7 @@ export async function resolveAttendeeIdentity(
       nombre: [nameMatch.firstName, nameMatch.lastName].filter(Boolean).join(" "),
       company: nameMatch.company || empresa,
       resolvedBy: "name",
+      apiData: null,
     };
   }
 
@@ -66,6 +68,7 @@ export async function resolveAttendeeIdentity(
     nombre: raw.asistente.nombreCompleto.trim(),
     company: empresa,
     resolvedBy: "unmatched",
+    apiData: null,
   };
 }
 

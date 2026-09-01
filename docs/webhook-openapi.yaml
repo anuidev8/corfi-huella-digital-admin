@@ -1,0 +1,396 @@
+openapi: 3.0.3
+info:
+  title: Huella Moderator – Corfilink Webhook API
+  version: "1.0.0"
+  description: |
+    Webhook que recibe eventos de check-in desde el tótem físico Corfilink
+    o desde sistemas internos (simuladores / integraciones legacy).
+
+    Cuando llega un evento, el servidor:
+    1. Valida el `x-webhook-secret`.
+    2. Detecta el formato del payload (nuevo tótem vs. legacy).
+    3. **Solo para el tótem nuevo:** resuelve la identidad del asistente
+       siguiendo la cadena de 4 pasos (ver abajo).
+    4. Llama a la Attendees API para obtener el payload de análisis
+       (`overallScore`, `level`, `axes`, etc.) y lo upsertea en
+       `attendee_packages`.
+    5. Inserta el check-in en `check_ins` con `status: pending`.
+
+    ## Cadena de resolución de identidad (tótem nuevo)
+
+    | Paso | Fuente | `resolvedBy` |
+    |------|--------|--------------|
+    | 1 | `GET /attendees/wristband/{uidManilla}` → Attendees API | `wristband` |
+    | 2 | `GET /attendees/{uidManilla}` → trata el UID como `attendee_id` | `direct_id` |
+    | 3 | Supabase `attendees.full_name ilike nombreCompleto` | `name` |
+    | 4 | Sin match → stub en cola para revisión del moderador | `unmatched` |
+
+    En los pasos 1 y 2, si la Attendees API devuelve un registro con
+    `payload`, ese análisis se upsertea en `attendee_packages`
+    (`package_status: ready`). En los pasos 3 y 4, se crea un stub con
+    `package_status: missing`.
+
+    ## Autenticación
+    El header `x-webhook-secret` debe coincidir con la variable de entorno
+    `CORFILINK_WEBHOOK_SECRET` del servidor. Si la variable no está seteada,
+    **la autenticación se omite** (útil en desarrollo local). Sin ese header
+    (o con un valor incorrecto), el servidor responde `401 Unauthorized`.
+
+    La secret nunca debe quedar hardcodeada en el tótem ni en el frontend.
+    Configurarla como variable de entorno tanto en el tótem como en el
+    servidor.
+
+servers:
+  - url: https://main.d35dcafwrasbiy.amplifyapp.com
+    description: Producción (Amplify)
+  - url: http://localhost:3001
+    description: Desarrollo local
+
+security:
+  - WebhookSecretAuth: []
+
+tags:
+  - name: check-in
+    description: Ingesta de eventos de check-in desde tótems y sistemas internos
+
+paths:
+  /api/webhooks/corfilink:
+    post:
+      tags: [check-in]
+      summary: Recibir un evento de check-in
+      description: |
+        Acepta dos formas de payload:
+
+        **Formato tótem nuevo** – enviado por el dispositivo físico Corfilink.
+        Identificado por la presencia de los campos `uidManilla` y `asistente`.
+        El servidor resuelve la identidad contra la Attendees API antes de
+        insertar.
+
+        **Formato legacy** – enviado por simuladores internos e integraciones
+        existentes. Identificado por la presencia de `userId` y `nombre`.
+        No se realiza resolución de identidad; `userId` se usa tal cual.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/TotemPayload"
+                - $ref: "#/components/schemas/LegacyPayload"
+            examples:
+              totem_wristband:
+                summary: Tótem nuevo – UID de manilla
+                value:
+                  uidManilla: "WB-001"
+                  readerId: "totem-01"
+                  timestamp: "2026-09-01T15:00:00.000Z"
+                  asistente:
+                    nombreCompleto: "Francisco Bejarano"
+                    empresa: "Pajonales, Mavalle y Unipalma"
+                    cargo: "Presidente"
+                    email: "f.bejarano@pajonales.com"
+              totem_direct_id:
+                summary: Tótem nuevo – UID coincide con attendee_id
+                value:
+                  uidManilla: "1"
+                  readerId: "totem-02"
+                  asistente:
+                    nombreCompleto: "Francisco Bejarano"
+                    empresa: "Pajonales, Mavalle y Unipalma"
+              legacy_internal:
+                summary: Legacy – simulador interno
+                value:
+                  userId: "ATT-00456"
+                  nombre: "Carlos Rodríguez"
+                  cargo: "Gerente Financiero"
+                  company: "Bancolombia"
+                  email: "c.rodriguez@bancolombia.com"
+                  eventId: "corfi-2026"
+      responses:
+        "200":
+          description: Check-in procesado (nuevo o ya existente de forma idempotente).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckInResponse"
+              examples:
+                nuevo_wristband:
+                  summary: Check-in nuevo – resuelto por manilla
+                  value:
+                    ok: true
+                    resolvedBy: wristband
+                    created: true
+                    entry:
+                      id: "uuid-queue-entry"
+                      userId: "1"
+                      nombre: "Francisco Bejarano"
+                      cargo: "Presidente"
+                      company: "Pajonales, Mavalle y Unipalma"
+                      email: "f.bejarano@pajonales.com"
+                      eventId: "corfi-2026"
+                      status: "pending"
+                      packageStatus: "ready"
+                      kioskId: null
+                      checkedInAt: "2026-09-01T15:00:00.000Z"
+                      assignedAt: null
+                      completedAt: null
+                ya_existe:
+                  summary: Ya estaba en cola (idempotente)
+                  value:
+                    ok: true
+                    resolvedBy: wristband
+                    created: false
+                    entry:
+                      id: "uuid-queue-entry"
+                      userId: "1"
+                      nombre: "Francisco Bejarano"
+                      status: "pending"
+                      packageStatus: "ready"
+                      kioskId: null
+                      checkedInAt: "2026-09-01T15:00:00.000Z"
+                      assignedAt: null
+                      completedAt: null
+                sin_match:
+                  summary: Sin match – stub para el moderador
+                  value:
+                    ok: true
+                    resolvedBy: unmatched
+                    created: true
+                    entry:
+                      id: "uuid-queue-entry"
+                      userId: "WB-999"
+                      nombre: "Ana Torres"
+                      status: "pending"
+                      packageStatus: "missing"
+                      kioskId: null
+                      checkedInAt: "2026-09-01T15:05:00.000Z"
+                      assignedAt: null
+                      completedAt: null
+                legacy:
+                  summary: Formato legacy procesado
+                  value:
+                    ok: true
+                    resolvedBy: legacy
+                    created: true
+                    entry:
+                      id: "uuid-queue-entry"
+                      userId: "ATT-00456"
+                      nombre: "Carlos Rodríguez"
+                      status: "pending"
+                      packageStatus: "ready"
+                      kioskId: null
+                      checkedInAt: "2026-09-01T15:10:00.000Z"
+                      assignedAt: null
+                      completedAt: null
+        "400":
+          description: |
+            Payload inválido (campos obligatorios ausentes o JSON mal formado).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+              examples:
+                campos_totem:
+                  summary: Faltan campos obligatorios del tótem
+                  value:
+                    error: "uidManilla and asistente.nombreCompleto are required"
+                campos_legacy:
+                  summary: Faltan campos del formato legacy
+                  value:
+                    error: "userId and nombre are required"
+                json_invalido:
+                  summary: JSON mal formado
+                  value:
+                    error: "Invalid JSON"
+        "401":
+          description: Header `x-webhook-secret` ausente o incorrecto.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorMessage" }
+              example:
+                error: "Unauthorized"
+
+components:
+  securitySchemes:
+    WebhookSecretAuth:
+      type: apiKey
+      in: header
+      name: x-webhook-secret
+      description: |
+        Debe coincidir con la variable de entorno `CORFILINK_WEBHOOK_SECRET`
+        del servidor. Si esa variable no está seteada, la autenticación se
+        omite (solo en desarrollo local).
+
+  schemas:
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    ResolvedBy:
+      type: string
+      enum: [wristband, direct_id, name, unmatched, legacy]
+      description: |
+        - `wristband` – UID resuelto contra `GET /attendees/wristband/{uid}`
+        - `direct_id` – UID resuelto contra `GET /attendees/{uid}` (era ya un attendee_id)
+        - `name`      – Fallback a coincidencia por nombre en Supabase
+        - `unmatched` – Sin match; stub creado para revisión del moderador
+        - `legacy`    – Payload legacy; `userId` usado sin resolución
+
+    QueueStatus:
+      type: string
+      enum: [pending, assigned, in_session, done, cancelled]
+
+    PackageStatus:
+      type: string
+      enum: [ready, missing]
+      description: |
+        - `ready`   – Hay un paquete de análisis disponible en `attendee_packages`
+        - `missing` – No se encontró análisis; el moderador debe gestionarlo
+
+    QueueEntry:
+      type: object
+      description: Entrada en la cola del moderador creada por este check-in.
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          description: |
+            `attendee_id` resuelto (pasos 1–3) o el `uidManilla`/`userId`
+            crudo si no hubo match.
+        nombre:
+          type: string
+          description: Siempre viene del payload del webhook, nunca de la Attendees API.
+        cargo:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+          description: Siempre viene del payload del webhook.
+        email:
+          type: string
+          nullable: true
+        eventId:
+          type: string
+        status:
+          $ref: "#/components/schemas/QueueStatus"
+        packageStatus:
+          $ref: "#/components/schemas/PackageStatus"
+        kioskId:
+          type: string
+          nullable: true
+          description: Null hasta que el moderador asigne a un kiosco.
+        checkedInAt:
+          type: string
+          format: date-time
+        assignedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - userId
+        - nombre
+        - status
+        - packageStatus
+        - checkedInAt
+
+    CheckInResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        resolvedBy:
+          $ref: "#/components/schemas/ResolvedBy"
+        created:
+          type: boolean
+          description: |
+            `true` si se creó una entrada nueva. `false` si ya existía una
+            entrada activa (`pending`/`assigned`/`in_session`) para ese
+            `userId` (respuesta idempotente).
+        entry:
+          $ref: "#/components/schemas/QueueEntry"
+      required: [ok, resolvedBy, created, entry]
+
+    AsistenteTotem:
+      type: object
+      description: Datos del asistente enviados por el tótem.
+      properties:
+        nombreCompleto:
+          type: string
+          description: Nombre completo – **obligatorio**.
+        empresa:
+          type: string
+          description: Empresa / organización.
+        cargo:
+          type: string
+          description: Cargo / título.
+        email:
+          type: string
+          format: email
+      required: [nombreCompleto]
+
+    TotemPayload:
+      type: object
+      description: |
+        Formato enviado por el dispositivo físico Corfilink cuando un
+        asistente acerca su manilla al lector NFC.
+      properties:
+        uidManilla:
+          type: string
+          description: UID NFC de la manilla física. **Obligatorio.**
+          example: "WB-001"
+        readerId:
+          type: string
+          description: Identificador del lector / tótem que originó el evento.
+          example: "totem-01"
+        timestamp:
+          type: string
+          format: date-time
+          description: |
+            Momento del evento en ISO 8601. Si se omite o no es una fecha
+            válida, el servidor usa la hora actual.
+          example: "2026-09-01T15:00:00.000Z"
+        asistente:
+          $ref: "#/components/schemas/AsistenteTotem"
+      required: [uidManilla, asistente]
+
+    LegacyPayload:
+      type: object
+      description: |
+        Formato usado por simuladores internos e integraciones existentes.
+        El `userId` se usa directamente sin ninguna resolución de identidad.
+      properties:
+        userId:
+          type: string
+          description: Identificador del asistente. **Obligatorio.**
+          example: "ATT-00456"
+        nombre:
+          type: string
+          description: Nombre completo. **Obligatorio.**
+          example: "Carlos Rodríguez"
+        cargo:
+          type: string
+          example: "Gerente Financiero"
+        company:
+          type: string
+          example: "Bancolombia"
+        email:
+          type: string
+          format: email
+        eventId:
+          type: string
+          example: "corfi-2026"
+        timestamp:
+          type: string
+          format: date-time
+      required: [userId, nombre]

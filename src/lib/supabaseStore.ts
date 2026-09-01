@@ -290,6 +290,12 @@ export async function sbGetModeratorState(): Promise<ModeratorState> {
   };
 }
 
+/** Returns ts if it parses as a valid date, otherwise now. */
+function validTimestamp(ts?: string): string {
+  if (ts && !Number.isNaN(Date.parse(ts))) return ts;
+  return new Date().toISOString();
+}
+
 export async function sbIngestCorfilinkCheckIn(
   payload: CorfilinkCheckIn,
   apiData?: AttendeeApiFull | null
@@ -392,7 +398,7 @@ export async function sbIngestCorfilinkCheckIn(
       event_id: payload.eventId?.trim() || EVENT_ID,
       status: "pending",
       package_status: pkgRow.package_status,
-      checked_in_at: payload.timestamp || new Date().toISOString(),
+      checked_in_at: validTimestamp(payload.timestamp),
     })
     .select("*")
     .single();
