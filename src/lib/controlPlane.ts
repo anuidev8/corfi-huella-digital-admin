@@ -100,24 +100,12 @@ export async function getKioskSession(kioskId: string) {
     : memory.getKioskSession(kioskId);
 }
 
-export async function seedDemoCheckIns() {
-  return isSupabaseConfigured()
-    ? sb.sbSeedDemoCheckIns()
-    : memory.seedDemoCheckIns();
-}
-
 export async function resetStore() {
   if (isSupabaseConfigured()) {
     await sb.sbResetStore();
     return;
   }
   memory.resetStore();
-}
-
-export async function syncAttendeePackages() {
-  return isSupabaseConfigured()
-    ? sb.sbSyncAttendeePackages()
-    : memory.syncAttendeePackages();
 }
 
 export async function setKioskAgent(kioskId: string, agentId: string | null) {

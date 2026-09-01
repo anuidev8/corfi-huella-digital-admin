@@ -3,10 +3,6 @@
  * Falls back is handled by store.ts when Supabase env is missing.
  */
 
-import {
-  loadAttendeePackageRows,
-  loadDemoCheckInSamples,
-} from "@/lib/attendeePackageSeed";
 import { markJourneyComplete } from "@/lib/journeyComplete";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import {
@@ -354,11 +350,9 @@ export async function sbIngestCorfilinkCheckIn(
         : "";
     const nameParts = apiData.full_name.trim().split(/\s+/);
     const firstName =
-      (ap?.firstName as string) ||
-      (nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0]);
+      nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0];
     const lastName =
-      (ap?.lastName as string) ||
-      (nameParts.length > 1 ? (nameParts[nameParts.length - 1] ?? "") : "");
+      nameParts.length > 1 ? (nameParts[nameParts.length - 1] ?? "") : "";
 
     const { error: pkgErr } = await sb.from("attendee_packages").upsert(
       {
@@ -715,54 +709,19 @@ export async function sbSyncAttendeePackages(): Promise<{
   userIds: string[];
   removed: string[];
 }> {
+  // Packages are created/updated live via the webhook — no local roster to sync.
   const sb = getSupabaseAdmin();
-  const rows = loadAttendeePackageRows();
-  const keepIds = new Set(rows.map((row) => row.user_id));
-
-  const { error } = await sb.from("attendee_packages").upsert(
-    rows.map((row) => ({
-      user_id: row.user_id,
-      first_name: row.first_name,
-      last_name: row.last_name,
-      role: row.role,
-      company: row.company,
-      sector: row.sector,
-      email: row.email,
-      overall_score: row.overall_score,
-      headline: row.headline,
-      package_status: row.package_status,
-      payload: row.payload,
-      updated_at: new Date().toISOString(),
-    })),
-    { onConflict: "user_id" }
+  const existing = await sb.from("attendee_packages").select("user_id");
+  if (existing.error) throw new Error(existing.error.message);
+  const userIds = ((existing.data ?? []) as { user_id: string }[]).map(
+    (r) => r.user_id
   );
-  if (error) throw new Error(error.message);
-
-  const existingRes = await sb.from("attendee_packages").select("user_id");
-  if (existingRes.error) throw new Error(existingRes.error.message);
-  const stale = ((existingRes.data ?? []) as { user_id: string }[])
-    .map((row) => row.user_id)
-    .filter((id) => !keepIds.has(id));
-
-  if (stale.length) {
-    await sb.from("check_ins").delete().in("user_id", stale);
-    const del = await sb.from("attendee_packages").delete().in("user_id", stale);
-    if (del.error) throw new Error(del.error.message);
-  }
-
-  return {
-    count: rows.length,
-    userIds: rows.map((r) => r.user_id),
-    removed: stale,
-  };
+  return { count: userIds.length, userIds, removed: [] };
 }
 
 export async function sbSeedDemoCheckIns(): Promise<QueueEntry[]> {
-  const out: QueueEntry[] = [];
-  for (const sample of loadDemoCheckInSamples()) {
-    out.push((await sbIngestCorfilinkCheckIn(sample)).entry);
-  }
-  return out;
+  // Demo seeding from local roster has been removed — data comes from real sources.
+  return [];
 }
 
 export async function sbResetStore(): Promise<void> {

@@ -1,7 +1,3 @@
-import {
-  loadDemoCheckInSamples,
-  loadKioskPackages,
-} from "@/lib/attendeePackageSeed";
 import type {
   CorfilinkCheckIn,
   DeliveryLog,
@@ -23,11 +19,7 @@ function uid(prefix: string) {
 }
 
 function seedPackages(): Record<string, KioskPackage> {
-  try {
-    return loadKioskPackages();
-  } catch {
-    return {};
-  }
+  return {};
 }
 
 const seedKiosks: Kiosk[] = [
@@ -365,17 +357,6 @@ export function heartbeatKiosk(args: {
     }
   }
   return { ...kiosk };
-}
-
-export function seedDemoCheckIns(): QueueEntry[] {
-  return loadDemoCheckInSamples().map((s) => ingestCorfilinkCheckIn(s).entry);
-}
-
-export function syncAttendeePackages(): { count: number; userIds: string[] } {
-  const store = getStore();
-  store.packages = seedPackages();
-  const userIds = Object.keys(store.packages);
-  return { count: userIds.length, userIds };
 }
 
 export function resetStore() {
