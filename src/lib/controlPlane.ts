@@ -2,6 +2,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import * as memory from "@/lib/store";
 import * as sb from "@/lib/supabaseStore";
 import type { CorfilinkCheckIn, CorfilinkRawPayload } from "@/lib/types";
+import type { AttendeeApiFull } from "@/lib/attendeesApiClient";
 import type { ResolveResult } from "@/lib/supabaseStore";
 
 export async function getModeratorState() {
@@ -10,9 +11,12 @@ export async function getModeratorState() {
     : memory.getModeratorState();
 }
 
-export async function ingestCorfilinkCheckIn(payload: CorfilinkCheckIn) {
+export async function ingestCorfilinkCheckIn(
+  payload: CorfilinkCheckIn,
+  apiData?: AttendeeApiFull | null
+) {
   return isSupabaseConfigured()
-    ? sb.sbIngestCorfilinkCheckIn(payload)
+    ? sb.sbIngestCorfilinkCheckIn(payload, apiData)
     : memory.ingestCorfilinkCheckIn(payload);
 }
 

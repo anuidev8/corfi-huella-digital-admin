@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 import {
   getAttendeeByWristband,
   getAttendeeById as getAttendeeByApiId,
+  type AttendeeApiFull,
 } from "@/lib/attendeesApiClient";
 import type {
   CorfilinkCheckIn,
@@ -163,6 +164,8 @@ export type ResolveResult = {
   nombre: string;
   company: string;
   resolvedBy: ResolvedBy;
+  /** Full attendee record from the API, used to populate attendee_packages. Null when resolved via name/unmatched. */
+  apiData: AttendeeApiFull | null;
 };
 
 /**
@@ -183,38 +186,41 @@ export async function sbResolveAttendeeIdentity(
   const nombreRaw = raw.asistente.nombreCompleto.trim();
   const empresa = raw.asistente.empresa?.trim() || "—";
 
-  // ── Step 1: API wristband lookup ──────────────────────────────────────────
+  // ── Step 1: API wristband lookup → then fetch full data by attendee_id ────
   if (uid) {
-    const hit = await getAttendeeByWristband(uid);
-    if (hit) {
+    const ref = await getAttendeeByWristband(uid);
+    if (ref) {
+      const full = await getAttendeeByApiId(ref.attendee_id);
       return {
-        attendeeId: hit.attendee_id,
-        nombre: nombreRaw,   // always from webhook, never from API
-        company: empresa,    // always from webhook, never from API
+        attendeeId: ref.attendee_id,
+        nombre: nombreRaw,
+        company: empresa,
         resolvedBy: "wristband",
+        apiData: full,
       };
     }
   }
 
-  // ── Step 2: API direct_id lookup (uidManilla might be the attendee_id) ───
+  // ── Step 2: API direct_id lookup (uidManilla might already be attendee_id) ─
   if (uid) {
-    const hit = await getAttendeeByApiId(uid);
-    if (hit) {
+    const full = await getAttendeeByApiId(uid);
+    if (full) {
       return {
-        attendeeId: hit.attendee_id,
-        nombre: nombreRaw,   // always from webhook, never from API
-        company: empresa,    // always from webhook, never from API
+        attendeeId: full.attendee_id,
+        nombre: nombreRaw,
+        company: empresa,
         resolvedBy: "direct_id",
+        apiData: full,
       };
     }
   }
 
-  // ── Step 3: Supabase name fallback (API not configured or uid unknown) ───
+  // ── Step 3: Supabase name fallback ────────────────────────────────────────
   if (nombreRaw) {
     const sb = getSupabaseAdmin();
     const { data } = await sb
       .from("attendees")
-      .select("attendee_id")   // only the id — no personal data stored
+      .select("attendee_id")
       .ilike("full_name", nombreRaw)
       .limit(1)
       .maybeSingle();
@@ -222,19 +228,21 @@ export async function sbResolveAttendeeIdentity(
       const row = data as { attendee_id: string };
       return {
         attendeeId: row.attendee_id,
-        nombre: nombreRaw,   // always from webhook
-        company: empresa,    // always from webhook
+        nombre: nombreRaw,
+        company: empresa,
         resolvedBy: "name",
+        apiData: null,
       };
     }
   }
 
-  // ── Step 4: unmatched — lands in queue with "missing" package ────────────
+  // ── Step 4: unmatched stub for moderator review ───────────────────────────
   return {
     attendeeId: uid || `unmatched_${Date.now()}`,
     nombre: nombreRaw,
     company: empresa,
     resolvedBy: "unmatched",
+    apiData: null,
   };
 }
 
@@ -283,7 +291,8 @@ export async function sbGetModeratorState(): Promise<ModeratorState> {
 }
 
 export async function sbIngestCorfilinkCheckIn(
-  payload: CorfilinkCheckIn
+  payload: CorfilinkCheckIn,
+  apiData?: AttendeeApiFull | null
 ): Promise<{ entry: QueueEntry; created: boolean }> {
   const sb = getSupabaseAdmin();
   const userId = payload.userId.trim();
@@ -302,18 +311,55 @@ export async function sbIngestCorfilinkCheckIn(
     return { entry: mapCheckIn(active.data as CheckInRow), created: false };
   }
 
-  let pkg = await sb
-    .from("attendee_packages")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (pkg.error) throw new Error(pkg.error.message);
+  // ── Upsert attendee_packages from API data when available ─────────────────
+  if (apiData) {
+    const ap = apiData.payload?.attendee as Record<string, unknown> | undefined;
+    const overallScore =
+      typeof apiData.payload?.overallScore === "number"
+        ? apiData.payload.overallScore
+        : 0;
+    const headline =
+      typeof apiData.payload?.suggested_aboutme_ik === "string"
+        ? apiData.payload.suggested_aboutme_ik
+        : "";
+    const nameParts = apiData.full_name.trim().split(/\s+/);
+    const firstName =
+      (ap?.firstName as string) ||
+      (nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0]);
+    const lastName =
+      (ap?.lastName as string) ||
+      (nameParts.length > 1 ? (nameParts[nameParts.length - 1] ?? "") : "");
 
-  if (!pkg.data) {
-    const { firstName, lastName } = splitNombre(nombre);
-    const inserted = await sb
+    const { error: pkgErr } = await sb.from("attendee_packages").upsert(
+      {
+        user_id: userId,
+        first_name: firstName,
+        last_name: lastName,
+        role: (ap?.role as string) || payload.cargo?.trim() || "—",
+        company:
+          (ap?.company as string) || apiData.company || payload.company?.trim() || "—",
+        sector: (ap?.sector as string) || apiData.sector || "—",
+        email: apiData.email || payload.email?.trim() || "",
+        overall_score: overallScore,
+        headline,
+        package_status: "ready",
+        payload: apiData.payload ?? {},
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    );
+    if (pkgErr) throw new Error(pkgErr.message);
+  } else {
+    // No API data — create a stub only if no package exists yet
+    const existing = await sb
       .from("attendee_packages")
-      .insert({
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (existing.error) throw new Error(existing.error.message);
+    if (!existing.data) {
+      const { firstName, lastName } = splitNombre(nombre);
+      const { error: stubErr } = await sb.from("attendee_packages").insert({
         user_id: userId,
         first_name: firstName,
         last_name: lastName,
@@ -322,14 +368,19 @@ export async function sbIngestCorfilinkCheckIn(
         email: payload.email?.trim() || "",
         package_status: "missing",
         headline: "Paquete de análisis pendiente",
-      })
-      .select("*")
-      .single();
-    if (inserted.error) throw new Error(inserted.error.message);
-    pkg = inserted;
+      });
+      if (stubErr) throw new Error(stubErr.message);
+    }
   }
 
-  const pkgRow = pkg.data as PackageRow;
+  const pkgRes = await sb
+    .from("attendee_packages")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+  if (pkgRes.error) throw new Error(pkgRes.error.message);
+  const pkgRow = pkgRes.data as PackageRow;
+
   const insertedQueue = await sb
     .from("check_ins")
     .insert({

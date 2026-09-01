@@ -47,6 +47,7 @@ export async function POST(request: Request) {
 
   let checkIn: CorfilinkCheckIn;
   let resolvedBy: string = "legacy";
+  let apiData: import("@/lib/attendeesApiClient").AttendeeApiFull | null = null;
 
   if (isRawTotemPayload(body)) {
     // ── New physical totem payload ──────────────────────────────────────────
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
 
     const resolved = await resolveAttendeeIdentity(body);
     resolvedBy = resolved.resolvedBy;
+    apiData = resolved.apiData;
 
     checkIn = {
       userId:    resolved.attendeeId,
@@ -89,7 +91,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await ingestCorfilinkCheckIn(checkIn);
+    const result = await ingestCorfilinkCheckIn(checkIn, apiData);
     return NextResponse.json({
       ok: true,
       resolvedBy,
