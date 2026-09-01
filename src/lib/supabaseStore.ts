@@ -9,6 +9,10 @@ import {
 } from "@/lib/attendeePackageSeed";
 import { markJourneyComplete } from "@/lib/journeyComplete";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import {
+  getAttendeeByWristband,
+  getAttendeeById as getAttendeeByApiId,
+} from "@/lib/attendeesApiClient";
 import type {
   CorfilinkCheckIn,
   CorfilinkRawPayload,
@@ -150,9 +154,6 @@ function splitNombre(nombre: string): { firstName: string; lastName: string } {
 
 type AttendeeRow = {
   attendee_id: string;
-  wristband_uid: string | null;
-  full_name: string;
-  company: string | null;
 };
 
 export type ResolveResult = {
@@ -163,80 +164,70 @@ export type ResolveResult = {
 };
 
 /**
- * Three-step identity resolution for raw Corfilink totem payloads.
+ * Four-step identity resolution for raw Corfilink totem payloads.
  *
- * 1. wristband_uid exact match  →  resolvedBy: "wristband"
- * 2. full_name exact match       →  resolvedBy: "name"
- * 3. uidManilla is a known attendee_id  →  resolvedBy: "direct_id"
- * 4. Nothing matched             →  resolvedBy: "unmatched"  (stub for moderator)
+ * 1. Attendees API  GET /attendees/wristband/{uid}  →  resolvedBy: "wristband"
+ * 2. Attendees API  GET /attendees/{uid}            →  resolvedBy: "direct_id"
+ * 3. Supabase attendees.full_name ilike fallback    →  resolvedBy: "name"
+ * 4. Nothing matched → stub entry for moderator     →  resolvedBy: "unmatched"
+ *
+ * The API is the primary source of truth (AWS / attendees pipeline).
+ * Supabase direct queries are the fallback when the API is not configured.
  */
 export async function sbResolveAttendeeIdentity(
   raw: CorfilinkRawPayload
 ): Promise<ResolveResult> {
-  const sb = getSupabaseAdmin();
   const uid = raw.uidManilla.trim();
   const nombreRaw = raw.asistente.nombreCompleto.trim();
   const empresa = raw.asistente.empresa?.trim() || "—";
 
-  // Step 1 — wristband_uid exact match
+  // ── Step 1: API wristband lookup ──────────────────────────────────────────
   if (uid) {
-    const { data } = await sb
-      .from("attendees")
-      .select("attendee_id, wristband_uid, full_name, company")
-      .eq("wristband_uid", uid)
-      .limit(1)
-      .maybeSingle();
-    if (data) {
-      const row = data as AttendeeRow;
+    const hit = await getAttendeeByWristband(uid);
+    if (hit) {
       return {
-        attendeeId: row.attendee_id,
-        nombre: row.full_name || nombreRaw,
-        company: row.company || empresa,
+        attendeeId: hit.attendee_id,
+        nombre: nombreRaw,   // always from webhook, never from API
+        company: empresa,    // always from webhook, never from API
         resolvedBy: "wristband",
       };
     }
   }
 
-  // Step 2 — full_name case-insensitive exact match
-  if (nombreRaw) {
-    const { data } = await sb
-      .from("attendees")
-      .select("attendee_id, wristband_uid, full_name, company")
-      .ilike("full_name", nombreRaw)
-      .limit(1)
-      .maybeSingle();
-    if (data) {
-      const row = data as AttendeeRow;
-      return {
-        attendeeId: row.attendee_id,
-        nombre: row.full_name || nombreRaw,
-        company: row.company || empresa,
-        resolvedBy: "name",
-      };
-    }
-  }
-
-  // Step 3 — uidManilla is itself a known attendee_id (legacy / manual assign)
+  // ── Step 2: API direct_id lookup (uidManilla might be the attendee_id) ───
   if (uid) {
-    const { data } = await sb
-      .from("attendees")
-      .select("attendee_id, full_name, company")
-      .eq("attendee_id", uid)
-      .limit(1)
-      .maybeSingle();
-    if (data) {
-      const row = data as AttendeeRow;
+    const hit = await getAttendeeByApiId(uid);
+    if (hit) {
       return {
-        attendeeId: row.attendee_id,
-        nombre: row.full_name || nombreRaw,
-        company: row.company || empresa,
+        attendeeId: hit.attendee_id,
+        nombre: nombreRaw,   // always from webhook, never from API
+        company: empresa,    // always from webhook, never from API
         resolvedBy: "direct_id",
       };
     }
   }
 
-  // Step 4 — unmatched: use uidManilla as userId so it lands in the queue
-  // with a "missing" package. Moderator can see it and reassign manually.
+  // ── Step 3: Supabase name fallback (API not configured or uid unknown) ───
+  if (nombreRaw) {
+    const sb = getSupabaseAdmin();
+    const { data } = await sb
+      .from("attendees")
+      .select("attendee_id")   // only the id — no personal data stored
+      .ilike("full_name", nombreRaw)
+      .limit(1)
+      .maybeSingle();
+    if (data) {
+      const row = data as { attendee_id: string };
+      return {
+        attendeeId: row.attendee_id,
+        nombre: nombreRaw,   // always from webhook
+        company: empresa,    // always from webhook
+        resolvedBy: "name",
+      };
+    }
+  }
+
+  // ── Step 4: unmatched — lands in queue with "missing" package ────────────
   return {
     attendeeId: uid || `unmatched_${Date.now()}`,
     nombre: nombreRaw,

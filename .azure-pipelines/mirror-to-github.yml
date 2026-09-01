@@ -1,0 +1,45 @@
+# Mirrors every push to this Azure DevOps repo over to GitHub
+# so AWS Amplify can pick it up for CI/CD.
+#
+# Prerequisites:
+#   1. In Azure DevOps: Pipelines → Library → Variable Groups
+#      Create a group named "github-secrets" with variable:
+#        GITHUB_PAT  = <GitHub Personal Access Token with repo scope>
+#   2. GITHUB_REPO below already points to the correct repo.
+
+trigger:
+  branches:
+    include:
+      - '*'
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: github-secrets
+  - name: GITHUB_REPO
+    value: 'https://github.com/anuidev8/corfi-huella-digital-admin.git'
+
+steps:
+  - checkout: self
+    fetchDepth: 0       # full history so all branches/tags mirror correctly
+    persistCredentials: true
+
+  - script: |
+      git config user.email "azdo-mirror@ci"
+      git config user.name  "AzDO Mirror"
+
+      # Encode the PAT into the remote URL for HTTPS auth
+      MIRROR_URL="https://$GITHUB_PAT@${GITHUB_REPO#https://}"
+
+      git remote add github "$MIRROR_URL" 2>/dev/null || \
+        git remote set-url github "$MIRROR_URL"
+
+      # Push current branch (Build.SourceBranch is refs/heads/<name>)
+      BRANCH="${BUILD_SOURCEBRANCH#refs/heads/}"
+      git push github "HEAD:refs/heads/$BRANCH" --force
+    displayName: 'Mirror branch to GitHub'
+    env:
+      GITHUB_PAT: $(GITHUB_PAT)
+      GITHUB_REPO: $(GITHUB_REPO)
+      BUILD_SOURCEBRANCH: $(Build.SourceBranch)
