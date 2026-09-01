@@ -113,4 +113,10 @@ export async function syncAttendeePackages() {
     : memory.syncAttendeePackages();
 }
 
+export async function setKioskAgent(kioskId: string, agentId: string | null) {
+  return isSupabaseConfigured()
+    ? sb.sbSetKioskAgent(kioskId, agentId)
+    : memory.setKioskAgent(kioskId, agentId);
+}
+
 export { isSupabaseConfigured };

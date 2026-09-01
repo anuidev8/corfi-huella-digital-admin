@@ -54,6 +54,7 @@ export type KioskRow = {
   screen: string | null;
   last_heartbeat_at: string | null;
   last_delivery_at: string | null;
+  agent_id: string | null;
 };
 
 type DeliveryRow = {
@@ -115,6 +116,7 @@ export function mapKioskRow(row: KioskRow): Kiosk {
     screen: row.screen,
     lastHeartbeatAt: row.last_heartbeat_at,
     lastDeliveryAt: row.last_delivery_at,
+    agentId: row.agent_id ?? null,
   };
 }
 

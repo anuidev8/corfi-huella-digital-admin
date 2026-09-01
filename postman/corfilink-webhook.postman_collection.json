@@ -1,0 +1,171 @@
+{
+  "info": {
+    "name": "Huella Moderator – Corfilink Webhook",
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "description": "Webhook endpoint that receives check-in events from the Corfilink physical totem or any internal system.\n\n**Auth**: Include the header `x-webhook-secret` with the value of `CORFILINK_WEBHOOK_SECRET`.\n\n**Two payload shapes are accepted:**\n1. **New totem format** – sent by the physical totem device\n2. **Legacy format** – sent by internal simulators or existing integrations\n\n**Identity resolution order (new totem only):**\n1. Wristband UID lookup via Attendees API → `resolvedBy: wristband`\n2. Direct attendee_id lookup via Attendees API → `resolvedBy: direct_id`\n3. Full-name fuzzy match in Supabase → `resolvedBy: name`\n4. No match → stub entry created for moderator review → `resolvedBy: unmatched`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://<your-amplify-domain>",
+      "description": "Replace with your Amplify app domain, e.g. https://main.d1a2b3c4xyz.amplifyapp.com"
+    },
+    {
+      "key": "webhook_secret",
+      "value": "f4118eaec962975a350a52acb40dbb765b2071a2c811813d0af0b8f61581897d",
+      "description": "Value of CORFILINK_WEBHOOK_SECRET env var"
+    }
+  ],
+  "item": [
+    {
+      "name": "New Totem Format (wristband UID)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-webhook-secret",
+            "value": "{{webhook_secret}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/webhooks/corfilink",
+          "host": ["{{base_url}}"],
+          "path": ["api", "webhooks", "corfilink"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"uidManilla\": \"WB-00123\",\n  \"readerId\": \"totem-01\",\n  \"timestamp\": \"2026-08-31T20:00:00.000Z\",\n  \"asistente\": {\n    \"nombreCompleto\": \"María García López\",\n    \"cargo\": \"Directora de Innovación\",\n    \"empresa\": \"Corficolombiana\",\n    \"email\": \"m.garcia@corficolombiana.com\"\n  }\n}",
+          "options": {
+            "raw": { "language": "json" }
+          }
+        },
+        "description": "Payload sent by the physical totem device when an attendee taps their wristband.\n\n- `uidManilla` – wristband UID scanned by the reader\n- `readerId` – which totem/reader sent the event\n- `timestamp` – ISO 8601 event time\n- `asistente.nombreCompleto` – **required**\n- `asistente.cargo`, `asistente.empresa`, `asistente.email` – optional\n\nThe server resolves `uidManilla` to an `attendee_id` using the Attendees API (wristband lookup first, direct_id second), then falls back to a Supabase name match."
+      },
+      "response": [
+        {
+          "name": "201 – Created (new check-in)",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"ok\": true,\n  \"resolvedBy\": \"wristband\",\n  \"created\": true,\n  \"entry\": {\n    \"id\": \"uuid-queue-entry\",\n    \"userId\": \"ATT-00123\",\n    \"nombre\": \"María García López\",\n    \"cargo\": \"Directora de Innovación\",\n    \"company\": \"Corficolombiana\",\n    \"email\": \"m.garcia@corficolombiana.com\",\n    \"eventId\": \"corfi-2026\",\n    \"status\": \"pending\",\n    \"packageStatus\": \"ready\",\n    \"kioskId\": null,\n    \"checkedInAt\": \"2026-08-31T20:00:00.000Z\",\n    \"assignedAt\": null,\n    \"completedAt\": null\n  }\n}"
+        },
+        {
+          "name": "200 – Already checked in (idempotent)",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"ok\": true,\n  \"resolvedBy\": \"wristband\",\n  \"created\": false,\n  \"entry\": {\n    \"id\": \"uuid-queue-entry\",\n    \"userId\": \"ATT-00123\",\n    \"nombre\": \"María García López\",\n    \"status\": \"pending\",\n    \"packageStatus\": \"ready\",\n    \"kioskId\": null,\n    \"checkedInAt\": \"2026-08-31T20:00:00.000Z\",\n    \"assignedAt\": null,\n    \"completedAt\": null\n  }\n}"
+        },
+        {
+          "name": "200 – Unmatched (stub created for moderator)",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"ok\": true,\n  \"resolvedBy\": \"unmatched\",\n  \"created\": true,\n  \"entry\": {\n    \"id\": \"uuid-queue-entry\",\n    \"userId\": \"WB-00123\",\n    \"nombre\": \"María García López\",\n    \"cargo\": \"Directora de Innovación\",\n    \"company\": \"Corficolombiana\",\n    \"status\": \"pending\",\n    \"packageStatus\": \"missing\",\n    \"kioskId\": null,\n    \"checkedInAt\": \"2026-08-31T20:00:00.000Z\",\n    \"assignedAt\": null,\n    \"completedAt\": null\n  }\n}"
+        },
+        {
+          "name": "401 – Wrong secret",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"error\": \"Unauthorized\"\n}"
+        },
+        {
+          "name": "400 – Missing required fields",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"error\": \"uidManilla and asistente.nombreCompleto are required\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Legacy Format (internal / simulator)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-webhook-secret",
+            "value": "{{webhook_secret}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/webhooks/corfilink",
+          "host": ["{{base_url}}"],
+          "path": ["api", "webhooks", "corfilink"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"ATT-00456\",\n  \"nombre\": \"Carlos Rodríguez\",\n  \"cargo\": \"Gerente Financiero\",\n  \"company\": \"Bancolombia\",\n  \"email\": \"c.rodriguez@bancolombia.com\",\n  \"eventId\": \"corfi-2026\",\n  \"timestamp\": \"2026-08-31T20:05:00.000Z\"\n}",
+          "options": {
+            "raw": { "language": "json" }
+          }
+        },
+        "description": "Legacy payload shape used by internal simulators and existing integrations.\n\n- `userId` – **required**, maps directly to `attendee_id` (no resolution step)\n- `nombre` – **required**\n- `cargo`, `company`, `email`, `eventId`, `timestamp` – optional\n\nNo identity resolution is performed — `userId` is used as-is."
+      },
+      "response": [
+        {
+          "name": "200 – Created",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"ok\": true,\n  \"resolvedBy\": \"legacy\",\n  \"created\": true,\n  \"entry\": {\n    \"id\": \"uuid-queue-entry\",\n    \"userId\": \"ATT-00456\",\n    \"nombre\": \"Carlos Rodríguez\",\n    \"cargo\": \"Gerente Financiero\",\n    \"company\": \"Bancolombia\",\n    \"email\": \"c.rodriguez@bancolombia.com\",\n    \"eventId\": \"corfi-2026\",\n    \"status\": \"pending\",\n    \"packageStatus\": \"ready\",\n    \"kioskId\": null,\n    \"checkedInAt\": \"2026-08-31T20:05:00.000Z\",\n    \"assignedAt\": null,\n    \"completedAt\": null\n  }\n}"
+        },
+        {
+          "name": "400 – Missing userId or nombre",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"error\": \"userId and nombre are required\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "New Totem – Name fallback (no wristband match)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-webhook-secret",
+            "value": "{{webhook_secret}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/webhooks/corfilink",
+          "host": ["{{base_url}}"],
+          "path": ["api", "webhooks", "corfilink"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"uidManilla\": \"UNKNOWN-UID-999\",\n  \"readerId\": \"totem-02\",\n  \"timestamp\": \"2026-08-31T20:10:00.000Z\",\n  \"asistente\": {\n    \"nombreCompleto\": \"Ana Milena Torres\",\n    \"cargo\": \"Analista\",\n    \"empresa\": \"Grupo Sura\",\n    \"email\": \"a.torres@gruposura.com\"\n  }\n}",
+          "options": {
+            "raw": { "language": "json" }
+          }
+        },
+        "description": "When `uidManilla` is not found in the Attendees API, the server falls back to matching by `asistente.nombreCompleto` in Supabase. Response will have `resolvedBy: name` on match or `resolvedBy: unmatched` if nothing is found."
+      },
+      "response": [
+        {
+          "name": "200 – Resolved by name",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"ok\": true,\n  \"resolvedBy\": \"name\",\n  \"created\": true,\n  \"entry\": {\n    \"id\": \"uuid-queue-entry\",\n    \"userId\": \"ATT-00789\",\n    \"nombre\": \"Ana Milena Torres\",\n    \"cargo\": \"Analista\",\n    \"company\": \"Grupo Sura\",\n    \"status\": \"pending\",\n    \"packageStatus\": \"ready\",\n    \"kioskId\": null,\n    \"checkedInAt\": \"2026-08-31T20:10:00.000Z\",\n    \"assignedAt\": null,\n    \"completedAt\": null\n  }\n}"
+        }
+      ]
+    }
+  ]
+}

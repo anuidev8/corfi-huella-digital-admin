@@ -19,7 +19,7 @@ const POLL_FALLBACK_MS = 60_000;
 
 async function fetchState(): Promise<ModeratorState> {
   const res = await fetch("/api/state", { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to load state");
+  if (!res.ok) throw new Error("Error al cargar el estado");
   return res.json() as Promise<ModeratorState>;
 }
 
@@ -80,7 +80,7 @@ export function ModeratorBoard() {
       setState(next);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
+    setError(e instanceof Error ? e.message : "Error al cargar");
     }
   }, [loadState]);
 
@@ -239,22 +239,22 @@ export function ModeratorBoard() {
         packages?: { count: number; removed?: string[] };
         checkIns?: number;
       };
-      if (!res.ok) throw new Error(data.error || "Request failed");
+      if (!res.ok) throw new Error(data.error || "Solicitud fallida");
       const defaultNotice =
         data.action === "sync-all" && data.packages?.count != null
-          ? `Synced ${data.packages.count} packages` +
+          ?       `Sincronizados ${data.packages.count} paquetes` +
             (data.packages.removed?.length
-              ? `, removed ${data.packages.removed.length} stale`
+              ? `, eliminados ${data.packages.removed.length} obsoletos`
               : "") +
-            (data.checkIns != null ? ` · ${data.checkIns} in queue` : "")
+            (data.checkIns != null ? ` · ${data.checkIns} en cola` : "")
           : data.action === "sync-packages" && data.count != null
-            ? `Synced ${data.count} attendee packages` +
-              (data.removed?.length ? ` (removed ${data.removed.length} stale)` : "")
+            ? `Sincronizados ${data.count} paquetes de asistentes` +
+              (data.removed?.length ? ` (eliminados ${data.removed.length} obsoletos)` : "")
             : "OK";
       setNotice(okMessage || data.message || defaultNotice);
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Action failed");
+      setError(e instanceof Error ? e.message : "Acción fallida");
     } finally {
       setBusyKey(null);
     }
@@ -297,11 +297,11 @@ export function ModeratorBoard() {
             Huella Digital · Evento
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-stone-900">
-            Moderator
+            Moderador
           </h1>
           <p className="mt-1 max-w-xl text-sm text-stone-600">
-            Corfilink check-ins land in the queue. Assign a free kiosk to push
-            the ready package to that device
+            Los check-ins de Corfilink llegan a la cola. Asigna un kiosco libre
+            para enviar el paquete listo a ese dispositivo
             {state?.backend ? (
               <>
                 {" "}
@@ -314,13 +314,13 @@ export function ModeratorBoard() {
                       <span className="text-emerald-700">realtime</span>
                     ) : realtimeOk === false ? (
                       <span className="text-amber-700">
-                        poll fallback
+                        sondeo de respaldo
                         {!isBrowserSupabaseConfigured()
-                          ? " (set NEXT_PUBLIC_SUPABASE_* and restart)"
+                          ? " (define NEXT_PUBLIC_SUPABASE_* y reinicia)"
                           : null}
                       </span>
                     ) : (
-                      <span className="text-stone-500">connecting…</span>
+                      <span className="text-stone-500">conectando…</span>
                     )}
                   </>
                 ) : null}
@@ -344,7 +344,7 @@ export function ModeratorBoard() {
             }
             className="rounded border border-emerald-500 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-950 hover:bg-emerald-100 disabled:opacity-50"
           >
-            Sync roster + queue
+            Sincronizar lista + cola
           </button>
           <button
             type="button"
@@ -360,7 +360,7 @@ export function ModeratorBoard() {
             }
             className="rounded border border-stone-400 bg-white px-3 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-50"
           >
-            Simulate Corfilink
+            Simular Corfilink
           </button>
           <button
             type="button"
@@ -376,14 +376,14 @@ export function ModeratorBoard() {
             }
             className="rounded border border-stone-300 bg-stone-100 px-3 py-2 text-sm text-stone-700 hover:bg-stone-200 disabled:opacity-50"
           >
-            Reset
+            Reiniciar
           </button>
           <button
             type="button"
             onClick={() => void refresh()}
             className="rounded bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800"
           >
-            Refresh
+            Actualizar
           </button>
         </div>
       </header>
@@ -404,13 +404,13 @@ export function ModeratorBoard() {
       )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Waiting" value={String(pending.length)} />
-        <StatCard label="In session" value={String(assigned.length)} />
+        <StatCard label="En espera" value={String(pending.length)} />
+        <StatCard label="En sesión" value={String(assigned.length)} />
         <StatCard label="Registrados" value={String(completed.length)} />
         <StatCard
-          label="Free kiosks"
+          label="Kioscos libres"
           value={String(freeOnline.length)}
-          hint={`${state?.kiosks.filter((k) => k.status === "online").length ?? 0} online`}
+          hint={`${state?.kiosks.filter((k) => k.status === "online").length ?? 0} en línea`}
         />
       </section>
 
@@ -418,16 +418,16 @@ export function ModeratorBoard() {
         <section className="rounded-lg border border-stone-300 bg-white">
           <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
             <h2 className="text-sm font-semibold tracking-wide text-stone-800 uppercase">
-              Queue
+              Cola
             </h2>
             <span className="text-xs text-stone-500">
-              Updated {state ? timeAgo(state.updatedAt) : "—"} ago
+              Actualizado hace {state ? timeAgo(state.updatedAt) : "—"}
             </span>
           </div>
 
           {pending.length === 0 && assigned.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-stone-500">
-              No check-ins yet. Use &quot;Simulate Corfilink&quot; or POST to{" "}
+              Aún no hay check-ins. Usa &quot;Simular Corfilink&quot; o envía un POST a{" "}
               <code className="rounded bg-stone-100 px-1 text-xs">
                 /api/webhooks/corfilink
               </code>
@@ -456,14 +456,14 @@ export function ModeratorBoard() {
                                 : "ok"
                         }
                       >
-                        {entry.status === "done" ? "registrado" : entry.status}
+                      {entry.status === "done" ? "registrado" : entry.status === "pending" ? "pendiente" : entry.status === "assigned" ? "asignado" : entry.status === "in_session" ? "en sesión" : entry.status}
                       </StatusPill>
                       <StatusPill
                         tone={
                           entry.packageStatus === "ready" ? "ok" : "bad"
                         }
                       >
-                        package {entry.packageStatus}
+                      package {entry.packageStatus === "ready" ? "listo" : entry.packageStatus === "missing" ? "faltante" : entry.packageStatus}
                       </StatusPill>
                     </div>
                     <p className="mt-1 truncate text-sm text-stone-600">
@@ -471,8 +471,7 @@ export function ModeratorBoard() {
                       {entry.company !== "—" ? ` · ${entry.company}` : ""}
                     </p>
                     <p className="mt-0.5 text-xs text-stone-400">
-                      {entry.userId} · checked in {timeAgo(entry.checkedInAt)}{" "}
-                      ago
+                      {entry.userId} · check-in hace {timeAgo(entry.checkedInAt)}{" "}
                       {entry.kioskId ? ` · → ${entry.kioskId}` : ""}
                     </p>
                   </div>
@@ -481,7 +480,7 @@ export function ModeratorBoard() {
                     <div className="flex flex-wrap gap-2">
                       {freeOnline.length === 0 ? (
                         <span className="text-xs text-stone-500">
-                          No free online kiosk
+                          Sin kioscos libres en línea
                         </span>
                       ) : (
                         freeOnline.map((k) => (
@@ -491,8 +490,8 @@ export function ModeratorBoard() {
                             disabled={busyKey !== null}
                             title={
                               entry.packageStatus === "missing"
-                                ? `Send stub package to ${k.label} (analysis missing)`
-                                : `Send to ${k.label}`
+                                ? `Enviar paquete provisional a ${k.label} (análisis faltante)`
+                                : `Enviar a ${k.label}`
                             }
                             onClick={() => assign(entry, k.id)}
                             className="rounded bg-teal-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
@@ -526,7 +525,7 @@ export function ModeratorBoard() {
                   <p className="mt-0.5 text-xs text-stone-500">
                     {entry.userId}
                     {entry.completedAt
-                      ? ` · completado ${timeAgo(entry.completedAt)} ago`
+                      ? ` · completado hace ${timeAgo(entry.completedAt)}`
                       : ""}
                     {entry.kioskId ? ` · ${entry.kioskId}` : ""}
                   </p>
@@ -537,10 +536,10 @@ export function ModeratorBoard() {
         ) : null}
 
         <div className="flex flex-col gap-6">
-          <section className="rounded-lg border border-stone-300 bg-white">
+        <section className="rounded-lg border border-stone-300 bg-white">
             <div className="border-b border-stone-200 px-4 py-3">
               <h2 className="text-sm font-semibold tracking-wide text-stone-800 uppercase">
-                Devices
+                Dispositivos
               </h2>
             </div>
             <ul className="divide-y divide-stone-100">
@@ -555,29 +554,30 @@ export function ModeratorBoard() {
                       <StatusPill
                         tone={k.status === "online" ? "ok" : "bad"}
                       >
-                        {k.status}
+                        {k.status === "online" ? "en línea" : k.status === "offline" ? "desconectado" : k.status}
                       </StatusPill>
                       <StatusPill
                         tone={k.busy === "free" ? "muted" : "info"}
                       >
-                        {k.busy}
+                        {k.busy === "free" ? "libre" : k.busy === "busy" ? "ocupado" : k.busy}
                       </StatusPill>
                     </div>
                     <p className="mt-1 text-sm text-stone-600">
                       {k.currentNombre
                         ? `${k.currentNombre}`
-                        : "No session"}
-                      {k.screen ? ` · screen: ${k.screen}` : ""}
+                        : "Sin sesión"}
+                      {k.screen ? ` · pantalla: ${k.screen}` : ""}
                     </p>
                     <p className="mt-0.5 text-xs text-stone-400">
-                      heartbeat{" "}
+                      latido{" "}
                       {k.lastHeartbeatAt
-                        ? `${timeAgo(k.lastHeartbeatAt)} ago`
-                        : "never"}
+                        ? `hace ${timeAgo(k.lastHeartbeatAt)}`
+                        : "nunca"}
                       {k.lastDeliveryAt
-                        ? ` · last delivery ${timeAgo(k.lastDeliveryAt)} ago`
+                        ? ` · última entrega hace ${timeAgo(k.lastDeliveryAt)}`
                         : ""}
                     </p>
+
                   </div>
                   {k.busy === "busy" && (
                     <button
@@ -594,7 +594,7 @@ export function ModeratorBoard() {
                       }
                       className="shrink-0 rounded border border-stone-400 px-2.5 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
                     >
-                      Release
+                      Liberar
                     </button>
                   )}
                 </li>
@@ -605,13 +605,13 @@ export function ModeratorBoard() {
           <section className="rounded-lg border border-stone-300 bg-white">
             <div className="border-b border-stone-200 px-4 py-3">
               <h2 className="text-sm font-semibold tracking-wide text-stone-800 uppercase">
-                Delivery log
+                Registro de entregas
               </h2>
             </div>
             {(state?.deliveries.length ?? 0) === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-stone-500">
-                Assignments will show here when a package is pushed to a
-                device.
+                Las asignaciones aparecerán aquí cuando un paquete sea enviado a un
+                dispositivo.
               </p>
             ) : (
               <ul className="max-h-56 divide-y divide-stone-100 overflow-auto">
@@ -621,7 +621,7 @@ export function ModeratorBoard() {
                       {d.nombre} → {d.kioskLabel}
                     </p>
                     <p className="text-xs text-stone-500">
-                      {d.userId} · {timeAgo(d.at)} ago
+                      {d.userId} · hace {timeAgo(d.at)}
                     </p>
                   </li>
                 ))}
@@ -634,18 +634,18 @@ export function ModeratorBoard() {
       <section className="rounded-lg border border-stone-300 bg-white">
         <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
           <h2 className="text-sm font-semibold tracking-wide text-stone-800 uppercase">
-            App roster
+            Lista de la app
           </h2>
           <span className="text-xs text-stone-500">
-              {roster.length} packages · Supabase attendee_packages
+              {roster.length} paquetes · Supabase attendee_packages
           </span>
         </div>
         {roster.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-stone-500">
-              No packages yet. Click &quot;Sync app roster&quot; to load from{" "}
+            <p className="px-4 py-8 text-center text-sm text-stone-500">
+              Aún no hay paquetes. Haz clic en &quot;Sincronizar lista + cola&quot; para cargar desde{" "}
               <code className="rounded bg-stone-100 px-1">data/roster.json</code>{" "}
-              into Supabase.
-          </p>
+              en Supabase.
+            </p>
         ) : (
           <ul className="grid gap-px bg-stone-100 sm:grid-cols-2 lg:grid-cols-4">
             {roster.map((person) => (
@@ -661,7 +661,7 @@ export function ModeratorBoard() {
                   <StatusPill
                     tone={person.packageStatus === "ready" ? "ok" : "bad"}
                   >
-                    package {person.packageStatus}
+                    paquete {person.packageStatus === "ready" ? "listo" : person.packageStatus === "missing" ? "faltante" : person.packageStatus}
                   </StatusPill>
                 </div>
               </li>
@@ -672,6 +672,7 @@ export function ModeratorBoard() {
     </div>
   );
 }
+
 
 function StatCard({
   label,

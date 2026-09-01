@@ -41,6 +41,7 @@ const seedKiosks: Kiosk[] = [
     screen: "attract",
     lastHeartbeatAt: nowIso(),
     lastDeliveryAt: null,
+    agentId: null,
   },
   {
     id: "kiosk-02",
@@ -52,6 +53,7 @@ const seedKiosks: Kiosk[] = [
     screen: "attract",
     lastHeartbeatAt: nowIso(),
     lastDeliveryAt: null,
+    agentId: null,
   },
   {
     id: "kiosk-03",
@@ -63,6 +65,7 @@ const seedKiosks: Kiosk[] = [
     screen: null,
     lastHeartbeatAt: null,
     lastDeliveryAt: null,
+    agentId: null,
   },
 ];
 
@@ -382,4 +385,14 @@ export function resetStore() {
     packages: structuredClone(seedPackages()),
     deliveries: [],
   };
+}
+
+export function setKioskAgent(
+  kioskId: string,
+  agentId: string | null
+): Kiosk {
+  const kiosk = getStore().kiosks.find((k) => k.id === kioskId);
+  if (!kiosk) throw new Error(`Kiosk ${kioskId} not found`);
+  kiosk.agentId = agentId;
+  return { ...kiosk };
 }

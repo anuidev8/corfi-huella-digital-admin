@@ -55,6 +55,7 @@ create table if not exists public.kiosks (
   screen text null,
   last_heartbeat_at timestamptz null,
   last_delivery_at timestamptz null,
+  agent_id text null,
   created_at timestamptz not null default now()
 );
 

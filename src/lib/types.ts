@@ -89,7 +89,19 @@ export type Kiosk = {
   lastHeartbeatAt: string | null;
   /** Last package pushed to this device (demo delivery log). */
   lastDeliveryAt: string | null;
+  /** LiveKit agent name assigned to this kiosk (LIVEKIT_AGENT_NAME). */
+  agentId: string | null;
 };
+
+/** Known LiveKit agents available for dispatch. */
+export type KnownAgent = {
+  id: string;
+  label: string;
+};
+
+export const KNOWN_AGENTS: KnownAgent[] = [
+  { id: "huella-guide", label: "Guía Huella (Nova Sonic)" },
+];
 
 export type DeliveryLog = {
   id: string;
