@@ -5,6 +5,7 @@ frontend:
       commands:
         - nvm use 22
         - npm ci
+        - env | grep -E '^(NEXT_PUBLIC_|SUPABASE_|OPENAI_|AZURE_|PORTRAIT_|LIVEKIT_|MODERATOR_|ATTENDEES_|CORFILINK_|GEMINI_|AWS_|OPENROUTER_|PHOTO_ART_)' > .env.production || true
     build:
       commands:
         - npm run build
