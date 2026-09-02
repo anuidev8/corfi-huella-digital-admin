@@ -22,9 +22,9 @@ function isRawTotemPayload(body: unknown): body is CorfilinkRawPayload {
  *   • New totem:       { uidManilla, readerId, timestamp, asistente: { nombreCompleto, ... } }
  *
  * Resolution fallback chain (new totem only):
- *   1. attendees.wristband_uid = uidManilla        → resolvedBy: "wristband"
- *   2. attendees.full_name ilike nombreCompleto     → resolvedBy: "name"
- *   3. attendees.attendee_id = uidManilla           → resolvedBy: "direct_id"
+ *   1. GET /attendees/wristband/{uidManilla}        → resolvedBy: "wristband"
+ *   2. GET /attendees/{uidManilla}                  → resolvedBy: "direct_id"
+ *   3. attendees.full_name ilike nombreCompleto     → resolvedBy: "name"
  *   4. nothing matched → stub entry for moderator   → resolvedBy: "unmatched"
  *
  * Optional auth: header `x-webhook-secret` must match CORFILINK_WEBHOOK_SECRET.

@@ -11,10 +11,13 @@ info:
     2. Detecta el formato del payload (nuevo tótem vs. legacy).
     3. **Solo para el tótem nuevo:** resuelve la identidad del asistente
        siguiendo la cadena de 4 pasos (ver abajo).
-    4. Llama a la Attendees API para obtener el payload de análisis
-       (`overallScore`, `level`, `axes`, etc.) y lo upsertea en
-       `attendee_packages`.
-    5. Inserta el check-in en `check_ins` con `status: pending`.
+    4. Llama a la Attendees API para obtener el payload de análisis completo
+       (`overallScore`, `status`, `level`, `axes`, etc.).
+    5. Upsertea los datos en `attendee_packages`, incluyendo el campo `payload`
+       que contiene el `status` de la API (`"pending"` o `"completed"`).
+    6. Inserta el check-in en `check_ins` con `status: pending`.
+    7. **El kiosk es responsable** de verificar `payload.status` y mostrar
+       la pantalla correspondiente ("Misión Cumplida" si ya completó).
 
     ## Cadena de resolución de identidad (tótem nuevo)
 

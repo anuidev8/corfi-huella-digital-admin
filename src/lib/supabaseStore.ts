@@ -313,30 +313,6 @@ export async function sbIngestCorfilinkCheckIn(
     return { entry: mapCheckIn(active.data as CheckInRow), created: false };
   }
 
-  // If the user already completed their journey, do not re-queue them.
-  // Return the most recent done entry so the caller can report it without
-  // creating a duplicate queue entry.
-  const completed = await sb
-    .from("attendee_packages")
-    .select("journey_completed_at")
-    .eq("user_id", userId)
-    .not("journey_completed_at", "is", null)
-    .maybeSingle();
-  if (completed.error) throw new Error(completed.error.message);
-  if (completed.data) {
-    const doneEntry = await sb
-      .from("check_ins")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("status", "done")
-      .order("completed_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (doneEntry.data) {
-      return { entry: mapCheckIn(doneEntry.data as CheckInRow), created: false };
-    }
-  }
-
   // ── Upsert attendee_packages from API data when available ─────────────────
   if (apiData) {
     const ap = apiData.payload?.attendee as Record<string, unknown> | undefined;
@@ -641,6 +617,7 @@ export async function sbGetKioskSession(kioskId: string): Promise<{
   packageStatus: PackageStatus;
   assignedAt: string | null;
   deliveryId: string | null;
+  payload?: Record<string, unknown> | null;
 } | null> {
   const sb = getSupabaseAdmin();
   const kioskRes = await sb.from("kiosks").select("*").eq("id", kioskId).single();
@@ -676,7 +653,7 @@ export async function sbGetKioskSession(kioskId: string): Promise<{
 
   const pkgRes = await sb
     .from("attendee_packages")
-    .select("package_status")
+    .select("package_status, payload")
     .eq("user_id", userId)
     .maybeSingle();
   if (pkgRes.error) throw new Error(pkgRes.error.message);
@@ -701,6 +678,7 @@ export async function sbGetKioskSession(kioskId: string): Promise<{
       "missing",
     assignedAt: entry?.assigned_at ?? kiosk.last_delivery_at,
     deliveryId: (delRes.data?.id as string) ?? null,
+    payload: (pkgRes.data?.payload as Record<string, unknown>) ?? null,
   };
 }
 
