@@ -393,7 +393,16 @@ export function assignToKiosk(args: {
   if (!kiosk) throw new Error("Kiosk not found");
   if (kiosk.status !== "online") throw new Error("Kiosk is offline");
   if (kiosk.busy === "busy" && kiosk.currentUserId !== entry.userId) {
-    throw new Error("Kiosk is busy");
+    // Same stale-flag self-heal as sbAssignToKiosk: if the current occupant
+    // no longer has an active queue entry, the kiosk is really free.
+    const stillOccupied = kiosk.currentUserId
+      ? store.queue.some(
+          (q) =>
+            q.userId === kiosk.currentUserId &&
+            (q.status === "assigned" || q.status === "in_session")
+        )
+      : false;
+    if (stillOccupied) throw new Error("Kiosk is busy");
   }
 
   // Release previous assignment if reassigning

@@ -648,7 +648,26 @@ export async function sbAssignToKiosk(args: {
     kioskRow.busy === "busy" &&
     kioskRow.current_user_id !== entry.user_id
   ) {
-    throw new Error("Kiosk is busy");
+    // `kiosks.busy` can lag the truth for a moment: release() closes the
+    // outgoing occupant's check_in BEFORE flipping busy back to free (see
+    // endKioskSession/markJourneyComplete below), and the kiosk's own finish
+    // signal is a multi-hop async call (kiosk -> its server -> here). If the
+    // current occupant no longer has an active check_in, the kiosk is
+    // really free — proceed instead of rejecting on a stale flag; the
+    // update below overwrites busy/current_user_id for the new occupant
+    // anyway.
+    let stillOccupied = Boolean(kioskRow.current_user_id);
+    if (kioskRow.current_user_id) {
+      const occupantCheck = await sb
+        .from("check_ins")
+        .select("id")
+        .eq("user_id", kioskRow.current_user_id)
+        .in("status", ["assigned", "in_session"])
+        .limit(1)
+        .maybeSingle();
+      stillOccupied = Boolean(occupantCheck.data);
+    }
+    if (stillOccupied) throw new Error("Kiosk is busy");
   }
 
   if (entry.kiosk_id && entry.kiosk_id !== args.kioskId) {
