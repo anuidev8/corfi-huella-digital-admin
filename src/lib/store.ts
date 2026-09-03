@@ -6,9 +6,12 @@ import type {
   ModeratorState,
   QueueEntry,
 } from "@/lib/types";
+import { getAttendeeById } from "@/lib/attendeesApiClient";
 
 const EVENT_ID = "corfi-2026";
 const OFFLINE_AFTER_MS = 45_000;
+/** Mirrors the Supabase store's safety net — see supabaseStore.ts for rationale. */
+const STALE_SESSION_AFTER_MS = 120_000;
 
 function nowIso() {
   return new Date().toISOString();
@@ -97,6 +100,61 @@ function refreshKioskPresence(store: Store) {
   }
 }
 
+/** Auto-finish any kiosk whose heartbeat went stale while still busy with a visitor. */
+function sweepStaleKiosks(store: Store) {
+  const cutoff = Date.now() - STALE_SESSION_AFTER_MS;
+  for (const k of store.kiosks) {
+    if (k.busy !== "busy" || !k.currentUserId) continue;
+    const t = k.lastHeartbeatAt ? Date.parse(k.lastHeartbeatAt) : NaN;
+    if (Number.isFinite(t) && t >= cutoff) continue;
+    // Stale heartbeat = abandoned session (tab crash, walked away), not a
+    // real finish — free the kiosk without claiming completion.
+    endSession(store, k.id, k.currentUserId, false);
+  }
+}
+
+/**
+ * Shared by manual release, the stale-session sweep, and the kiosk's own
+ * finish/cancel signal. Only `completed: true` (the visitor actually
+ * reached the end of the journey) sets journeyCompletedAt and marks the
+ * queue entry "done" — everything else marks it "cancelled" and leaves
+ * journeyCompletedAt alone, so an abandoned session doesn't look like a
+ * real one on a later re-scan (mirrors endKioskSession in the Supabase store).
+ */
+function endSession(
+  store: Store,
+  kioskId: string,
+  userId: string,
+  completed: boolean
+) {
+  const now = nowIso();
+  const entry = store.queue.find(
+    (q) =>
+      q.userId === userId &&
+      (q.status === "assigned" || q.status === "in_session")
+  );
+  if (completed) {
+    const pkg = store.packages[userId];
+    if (pkg) pkg.journeyCompletedAt = now;
+    if (entry) {
+      entry.status = "done";
+      entry.kioskId = kioskId;
+      entry.completedAt = now;
+    }
+  } else if (entry) {
+    entry.status = "cancelled";
+    entry.kioskId = kioskId;
+    entry.completedAt = now;
+  }
+  const kiosk = store.kiosks.find((k) => k.id === kioskId);
+  if (kiosk) {
+    kiosk.busy = "free";
+    kiosk.currentUserId = null;
+    kiosk.currentNombre = null;
+    kiosk.screen = "attract";
+  }
+}
+
 function splitNombre(nombre: string): { firstName: string; lastName: string } {
   const parts = nombre.trim().split(/\s+/);
   if (parts.length === 1) return { firstName: parts[0], lastName: "" };
@@ -109,6 +167,7 @@ function splitNombre(nombre: string): { firstName: string; lastName: string } {
 export function getModeratorState(): ModeratorState {
   const store = getStore();
   refreshKioskPresence(store);
+  sweepStaleKiosks(store);
   const queue = [...store.queue].sort((a, b) =>
     a.checkedInAt < b.checkedInAt ? 1 : -1
   );
@@ -180,6 +239,7 @@ export function getKioskSession(kioskId: string): {
 export function ingestCorfilinkCheckIn(payload: CorfilinkCheckIn): {
   entry: QueueEntry;
   created: boolean;
+  alreadyCompleted?: boolean;
 } {
   const store = getStore();
   const userId = payload.userId.trim();
@@ -193,6 +253,38 @@ export function ingestCorfilinkCheckIn(payload: CorfilinkCheckIn): {
   );
   if (existing) {
     return { entry: { ...existing }, created: false };
+  }
+
+  // A repeat tap of a wristband that already finished — don't re-queue
+  // them, return their last check-in (or a synthesized one) as a no-op.
+  const alreadyCompleted = Boolean(store.packages[userId]?.journeyCompletedAt);
+  if (alreadyCompleted) {
+    const last = store.queue
+      .filter((q) => q.userId === userId)
+      .sort((a, b) => (a.checkedInAt < b.checkedInAt ? 1 : -1))[0];
+    if (last) {
+      return { entry: { ...last }, created: false, alreadyCompleted: true };
+    }
+    const pkg = store.packages[userId];
+    return {
+      entry: {
+        id: `already-completed_${userId}`,
+        userId,
+        nombre,
+        cargo: payload.cargo?.trim() || pkg?.role || "—",
+        company: payload.company?.trim() || pkg?.company || "—",
+        email: payload.email?.trim() || pkg?.email || "",
+        eventId: payload.eventId?.trim() || EVENT_ID,
+        status: "done",
+        packageStatus: pkg?.packageStatus ?? "ready",
+        kioskId: null,
+        checkedInAt: payload.timestamp || nowIso(),
+        assignedAt: null,
+        completedAt: pkg?.journeyCompletedAt ?? null,
+      },
+      created: false,
+      alreadyCompleted: true,
+    };
   }
 
   const pkg = store.packages[userId];
@@ -229,7 +321,50 @@ export function ingestCorfilinkCheckIn(payload: CorfilinkCheckIn): {
   };
 
   store.queue.unshift(entry);
-  return { entry: { ...entry }, created: true };
+  return { entry: { ...entry }, created: true, alreadyCompleted };
+}
+
+/** In-memory counterpart to sbProvisionAttendee — see supabaseStore.ts. */
+export async function provisionAttendee(
+  userId: string
+): Promise<{ ok: true } | { ok: false; reason: "not_found" }> {
+  const id = userId.trim();
+  if (!id) throw new Error("userId is required");
+  const store = getStore();
+
+  if (store.packages[id]?.packageStatus === "ready") {
+    return { ok: true };
+  }
+
+  const apiData = await getAttendeeById(id);
+  if (!apiData) return { ok: false, reason: "not_found" };
+
+  const ap = apiData.payload?.attendee as Record<string, unknown> | undefined;
+  const nameParts = apiData.full_name.trim().split(/\s+/);
+  const firstName =
+    nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0];
+  const lastName =
+    nameParts.length > 1 ? (nameParts[nameParts.length - 1] ?? "") : "";
+
+  store.packages[id] = {
+    userId: id,
+    firstName,
+    lastName,
+    role: (ap?.role as string) || "—",
+    company: (ap?.company as string) || apiData.company || "—",
+    sector: (ap?.sector as string) || apiData.sector || "—",
+    email: apiData.email || "",
+    overallScore:
+      typeof apiData.payload?.overallScore === "number"
+        ? apiData.payload.overallScore
+        : 0,
+    headline:
+      typeof apiData.payload?.suggested_aboutme_ik === "string"
+        ? apiData.payload.suggested_aboutme_ik
+        : "",
+    packageStatus: "ready",
+  };
+  return { ok: true };
 }
 
 export function assignToKiosk(args: {
@@ -244,7 +379,13 @@ export function assignToKiosk(args: {
   const store = getStore();
   const entry = store.queue.find((q) => q.id === args.queueId);
   if (!entry) throw new Error("Queue entry not found");
-  if (entry.status !== "pending" && entry.status !== "assigned") {
+  // "done" allowed too — see sbAssignToKiosk for why (kiosk validates
+  // completion, not the moderator's queue status).
+  if (
+    entry.status !== "pending" &&
+    entry.status !== "assigned" &&
+    entry.status !== "done"
+  ) {
     throw new Error(`Cannot assign from status ${entry.status}`);
   }
 
@@ -301,32 +442,24 @@ export function assignToKiosk(args: {
   };
 }
 
-export function releaseKiosk(kioskId: string, userId?: string | null): Kiosk {
+export function releaseKiosk(
+  kioskId: string,
+  userId?: string | null,
+  completed = false
+): Kiosk {
   const store = getStore();
   const kiosk = store.kiosks.find((k) => k.id === kioskId);
   if (!kiosk) throw new Error("Kiosk not found");
 
   const uid = userId?.trim() || kiosk.currentUserId;
-  const now = nowIso();
   if (uid) {
-    const pkg = store.packages[uid];
-    if (pkg) pkg.journeyCompletedAt = now;
-    const entry = store.queue.find(
-      (q) =>
-        q.userId === uid &&
-        (q.status === "assigned" || q.status === "in_session")
-    );
-    if (entry) {
-      entry.status = "done";
-      entry.kioskId = kiosk.id;
-      entry.completedAt = now;
-    }
+    endSession(store, kiosk.id, uid, completed);
+  } else {
+    kiosk.busy = "free";
+    kiosk.currentUserId = null;
+    kiosk.currentNombre = null;
+    kiosk.screen = "attract";
   }
-
-  kiosk.busy = "free";
-  kiosk.currentUserId = null;
-  kiosk.currentNombre = null;
-  kiosk.screen = "attract";
   return { ...kiosk };
 }
 
@@ -336,6 +469,7 @@ export function heartbeatKiosk(args: {
   userId?: string | null;
 }): Kiosk {
   const store = getStore();
+  sweepStaleKiosks(store);
   const kiosk = store.kiosks.find((k) => k.id === args.kioskId);
   if (!kiosk) throw new Error("Kiosk not found");
 

@@ -499,10 +499,6 @@
     margin-top: var(--spacing);
   }
 
-  .mt-2 {
-    margin-top: calc(var(--spacing) * 2);
-  }
-
   .block {
     display: block;
   }
@@ -583,6 +579,10 @@
     justify-content: space-between;
   }
 
+  .gap-1 {
+    gap: var(--spacing);
+  }
+
   .gap-2 {
     gap: calc(var(--spacing) * 2);
   }
@@ -597,10 +597,6 @@
 
   .gap-6 {
     gap: calc(var(--spacing) * 6);
-  }
-
-  .gap-px {
-    gap: 1px;
   }
 
   :where(.divide-y > :not(:last-child)) {
@@ -669,6 +665,10 @@
 
   .bg-sky-100 {
     background-color: var(--color-sky-100);
+  }
+
+  .bg-stone-50 {
+    background-color: var(--color-stone-50);
   }
 
   .bg-stone-100 {
@@ -753,10 +753,6 @@
 
   .text-center {
     text-align: center;
-  }
-
-  .font-mono {
-    font-family: var(--font-mod-mono);
   }
 
   .text-3xl {
@@ -872,6 +868,10 @@
   @media (hover: hover) {
     .hover\:bg-stone-50:hover {
       background-color: var(--color-stone-50);
+    }
+
+    .hover\:bg-stone-100:hover {
+      background-color: var(--color-stone-100);
     }
 
     .hover\:bg-stone-200:hover {

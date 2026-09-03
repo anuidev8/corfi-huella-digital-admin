@@ -12,6 +12,7 @@ create table if not exists public.attendee_packages (
   company text not null default '—',
   sector text not null default '—',
   email text not null default '',
+  gender text null check (gender is null or gender in ('hombre', 'mujer')),
   overall_score integer not null default 0,
   headline text not null default '',
   package_status text not null default 'ready'

@@ -282,21 +282,22 @@ export function ModeratorBoard() {
     );
   }
 
+  function changeAttendeeStatus(userId: string, status: "pending" | "completed") {
+    void runAction(
+      `status-${userId}`,
+      () =>
+        fetch("/api/attendee-status", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attendeeId: userId, status }),
+        }),
+      `Estado de ${userId} → ${status}`
+    );
+  }
+
   const freeOnline =
     state?.kiosks.filter((k) => k.status === "online" && k.busy === "free") ??
     [];
-
-  const roster = useMemo(() => {
-    if (!state?.packages) return [];
-    return Object.values(state.packages)
-      .map((pkg) => ({
-        userId: pkg.userId,
-        nombre: [pkg.firstName, pkg.lastName].filter(Boolean).join(" "),
-        company: pkg.company,
-        packageStatus: pkg.packageStatus,
-      }))
-      .sort((a, b) => a.userId.localeCompare(b.userId));
-  }, [state]);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
@@ -454,32 +455,40 @@ export function ModeratorBoard() {
                     </p>
                   </div>
 
-                  {entry.status === "pending" && (
-                    <div className="flex flex-wrap gap-2">
-                      {freeOnline.length === 0 ? (
-                        <span className="text-xs text-stone-500">
-                          Sin kioscos libres en línea
-                        </span>
-                      ) : (
-                        freeOnline.map((k) => (
-                          <button
-                            key={k.id}
-                            type="button"
-                            disabled={busyKey !== null}
-                            title={
-                              entry.packageStatus === "missing"
-                                ? `Enviar paquete provisional a ${k.label} (análisis faltante)`
-                                : `Enviar a ${k.label}`
-                            }
-                            onClick={() => assign(entry, k.id)}
-                            className="rounded bg-teal-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            → {k.label}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {entry.status === "pending" && (
+                      <>
+                        {freeOnline.length === 0 ? (
+                          <span className="text-xs text-stone-500">
+                            Sin kioscos libres en línea
+                          </span>
+                        ) : (
+                          freeOnline.map((k) => (
+                            <button
+                              key={k.id}
+                              type="button"
+                              disabled={busyKey !== null}
+                              title={
+                                entry.packageStatus === "missing"
+                                  ? `Enviar paquete provisional a ${k.label} (análisis faltante)`
+                                  : `Enviar a ${k.label}`
+                              }
+                              onClick={() => assign(entry, k.id)}
+                              className="rounded bg-teal-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              → {k.label}
+                            </button>
+                          ))
+                        )}
+                      </>
+                    )}
+                    <AttendeeStatusChanger
+                      userId={entry.userId}
+                      currentStatus={entry.status === "pending" ? "pending" : "completed"}
+                      busy={busyKey !== null}
+                      onChange={changeAttendeeStatus}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -495,18 +504,54 @@ export function ModeratorBoard() {
             </div>
             <ul className="divide-y divide-stone-100">
               {completed.slice(0, 12).map((entry) => (
-                <li key={entry.id} className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-stone-900">{entry.nombre}</p>
-                    <StatusPill tone="ok">registrado</StatusPill>
+                <li
+                  key={entry.id}
+                  className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-stone-900">{entry.nombre}</p>
+                      <StatusPill tone="ok">registrado</StatusPill>
+                    </div>
+                    <p className="mt-0.5 text-xs text-stone-500">
+                      {entry.userId}
+                      {entry.completedAt
+                        ? ` · completado hace ${timeAgo(entry.completedAt)}`
+                        : ""}
+                      {entry.kioskId ? ` · ${entry.kioskId}` : ""}
+                    </p>
                   </div>
-                  <p className="mt-0.5 text-xs text-stone-500">
-                    {entry.userId}
-                    {entry.completedAt
-                      ? ` · completado hace ${timeAgo(entry.completedAt)}`
-                      : ""}
-                    {entry.kioskId ? ` · ${entry.kioskId}` : ""}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Re-send a completed attendee to a kiosk — for testing
+                        the kiosk's own pending/completed views, or a staff
+                        override. The kiosk checks journey_completed_at
+                        itself and decides what to show; this button doesn't
+                        pre-judge that. */}
+                    {freeOnline.length === 0 ? (
+                      <span className="text-xs text-stone-500">
+                        Sin kioscos libres en línea
+                      </span>
+                    ) : (
+                      freeOnline.map((k) => (
+                        <button
+                          key={k.id}
+                          type="button"
+                          disabled={busyKey !== null}
+                          title={`Reenviar a ${k.label}`}
+                          onClick={() => assign(entry, k.id)}
+                          className="rounded bg-teal-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          → {k.label}
+                        </button>
+                      ))
+                    )}
+                    <AttendeeStatusChanger
+                      userId={entry.userId}
+                      currentStatus="completed"
+                      busy={busyKey !== null}
+                      onChange={changeAttendeeStatus}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -608,43 +653,6 @@ export function ModeratorBoard() {
           </section>
         </div>
       </div>
-
-      <section className="rounded-lg border border-stone-300 bg-white">
-        <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
-          <h2 className="text-sm font-semibold tracking-wide text-stone-800 uppercase">
-            Lista de la app
-          </h2>
-          <span className="text-xs text-stone-500">
-              {roster.length} paquetes · Supabase attendee_packages
-          </span>
-        </div>
-        {roster.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-stone-500">
-              Aún no hay paquetes. Los paquetes se cargan automáticamente cuando llega un check-in vía webhook.
-            </p>
-        ) : (
-          <ul className="grid gap-px bg-stone-100 sm:grid-cols-2 lg:grid-cols-4">
-            {roster.map((person) => (
-              <li key={person.userId} className="bg-white px-4 py-3">
-                <p className="font-medium text-stone-900">{person.nombre}</p>
-                <p className="mt-0.5 font-mono text-xs text-stone-500">
-                  {person.userId}
-                </p>
-                <p className="mt-1 truncate text-xs text-stone-600">
-                  {person.company}
-                </p>
-                <div className="mt-2">
-                  <StatusPill
-                    tone={person.packageStatus === "ready" ? "ok" : "bad"}
-                  >
-                    paquete {person.packageStatus === "ready" ? "listo" : person.packageStatus === "missing" ? "faltante" : person.packageStatus}
-                  </StatusPill>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   );
 }
@@ -668,6 +676,42 @@ function StatCard({
         {value}
       </p>
       {hint ? <p className="mt-1 text-xs text-stone-500">{hint}</p> : null}
+    </div>
+  );
+}
+
+function AttendeeStatusChanger({
+  userId,
+  currentStatus,
+  busy,
+  onChange,
+}: {
+  userId: string;
+  currentStatus: "pending" | "completed";
+  busy: boolean;
+  onChange: (userId: string, status: "pending" | "completed") => void;
+}) {
+  const [selected, setSelected] = useState<"pending" | "completed">(currentStatus);
+
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={selected}
+        disabled={busy}
+        onChange={(e) => setSelected(e.target.value as "pending" | "completed")}
+        className="rounded border border-stone-300 bg-white px-2 py-1 text-xs text-stone-700 disabled:opacity-50"
+      >
+        <option value="completed">completed</option>
+        <option value="pending">pending</option>
+      </select>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onChange(userId, selected)}
+        className="rounded border border-stone-400 bg-stone-50 px-2 py-1 text-xs font-medium text-stone-700 hover:bg-stone-100 disabled:opacity-50"
+      >
+        Cambiar
+      </button>
     </div>
   );
 }

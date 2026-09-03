@@ -6,7 +6,8 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:directory": "node scripts/sync-attendee-directory.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

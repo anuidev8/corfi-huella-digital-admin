@@ -78,10 +78,21 @@ export async function assignToKiosk(args: { queueId: string; kioskId: string }) 
     : memory.assignToKiosk(args);
 }
 
-export async function releaseKiosk(kioskId: string, userId?: string | null) {
+/** Manual-search provisioning — see sbProvisionAttendee for the full rationale. */
+export async function provisionAttendee(userId: string) {
   return isSupabaseConfigured()
-    ? sb.sbReleaseKiosk(kioskId, userId)
-    : memory.releaseKiosk(kioskId, userId);
+    ? sb.sbProvisionAttendee(userId)
+    : memory.provisionAttendee(userId);
+}
+
+export async function releaseKiosk(
+  kioskId: string,
+  userId?: string | null,
+  completed = false
+) {
+  return isSupabaseConfigured()
+    ? sb.sbReleaseKiosk(kioskId, userId, completed)
+    : memory.releaseKiosk(kioskId, userId, completed);
 }
 
 export async function heartbeatKiosk(args: {

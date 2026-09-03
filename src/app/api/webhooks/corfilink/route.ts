@@ -96,6 +96,7 @@ export async function POST(request: Request) {
       ok: true,
       resolvedBy,
       created: result.created,
+      alreadyCompleted: result.alreadyCompleted ?? false,
       entry: result.entry,
     });
   } catch (err) {

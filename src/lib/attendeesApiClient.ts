@@ -9,6 +9,8 @@
  * Auth key  → ATTENDEES_API_KEY  env var  (header: x-api-key)
  */
 
+import { normalizeGender, type Gender } from "@/lib/gender";
+
 /** Minimal reference returned by the wristband lookup endpoint. */
 export type AttendeeApiRef = {
   attendee_id: string;
@@ -27,6 +29,8 @@ export type AttendeeApiFull = {
   company: string;
   email: string;
   sector: string;
+  /** Normalized "hombre" | "mujer", or null when missing/unrecognized upstream. */
+  gender: Gender | null;
   /** Analysis payload with media fields removed. null if API returned no payload. */
   payload: Record<string, unknown> | null;
 };
@@ -142,6 +146,7 @@ export async function getAttendeeById(
       company: (data.company as string) || "",
       email: (data.email as string) || "",
       sector: (data.sector as string) || "",
+      gender: normalizeGender(data.gender as string | undefined),
       payload: cleanPayload,
     };
   } catch (err) {

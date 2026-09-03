@@ -1,10 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { updateAttendeeStatus } from "@/lib/attendeesApiClient";
 
-export async function ensureCheckInDone(
+/**
+ * Closes out whatever check_ins row is active/pending for this user as
+ * `status`. Used by both real completion ("done") and a plain kiosk
+ * release/cancel ("cancelled") — see markJourneyComplete vs endKioskSession.
+ */
+async function closeActiveCheckIn(
   sb: SupabaseClient,
-  args: { userId: string; kioskId: string; completedAt: string }
-): Promise<void> {
+  args: { userId: string; kioskId: string; closedAt: string; status: "done" | "cancelled" }
+): Promise<boolean> {
   const userId = args.userId.trim();
   const { data: rows, error } = await sb
     .from("check_ins")
@@ -19,14 +24,14 @@ export async function ensureCheckInDone(
     const res = await sb
       .from("check_ins")
       .update({
-        status: "done",
-        completed_at: args.completedAt,
+        status: args.status,
+        completed_at: args.closedAt,
         kiosk_id: args.kioskId,
       })
       .eq("id", active.id)
       .select("id");
     if (res.error) throw new Error(res.error.message);
-    return;
+    return true;
   }
 
   const pending = rows?.find((r) => r.status === "pending");
@@ -34,17 +39,31 @@ export async function ensureCheckInDone(
     const res = await sb
       .from("check_ins")
       .update({
-        status: "done",
-        completed_at: args.completedAt,
+        status: args.status,
+        completed_at: args.closedAt,
         kiosk_id: args.kioskId,
       })
       .eq("id", pending.id)
       .select("id");
     if (res.error) throw new Error(res.error.message);
-    return;
+    return true;
   }
 
-  if (rows?.some((r) => r.status === "done")) return;
+  return Boolean(rows?.some((r) => r.status === args.status));
+}
+
+export async function ensureCheckInDone(
+  sb: SupabaseClient,
+  args: { userId: string; kioskId: string; completedAt: string }
+): Promise<void> {
+  const userId = args.userId.trim();
+  const closed = await closeActiveCheckIn(sb, {
+    userId,
+    kioskId: args.kioskId,
+    closedAt: args.completedAt,
+    status: "done",
+  });
+  if (closed) return;
 
   const { data: pkg, error: pkgErr } = await sb
     .from("attendee_packages")
@@ -70,6 +89,33 @@ export async function ensureCheckInDone(
   if (ins.error) throw new Error(ins.error.message);
 }
 
+async function freeKiosk(
+  sb: SupabaseClient,
+  kioskId: string,
+  now: string
+): Promise<void> {
+  const kioskRes = await sb
+    .from("kiosks")
+    .update({
+      busy: "free",
+      current_user_id: null,
+      current_nombre: null,
+      screen: "attract",
+      last_heartbeat_at: now,
+    })
+    .eq("id", kioskId);
+  if (kioskRes.error) throw new Error(kioskRes.error.message);
+}
+
+/**
+ * Genuine completion — the visitor actually reached the end of the journey.
+ * Sets attendee_packages.journey_completed_at (the field the kiosk checks
+ * before showing "misión cumplida" instead of restarting the journey) and
+ * syncs "completed" to the external Attendees API. Only call this from a
+ * path that KNOWS the journey actually finished — see endKioskSession for
+ * every other way a kiosk assignment ends (manual "Liberar", the stale/
+ * orphaned-session sweep, a visitor cancelling mid-journey).
+ */
 export async function markJourneyComplete(
   sb: SupabaseClient,
   args: { userId: string; kioskId: string }
@@ -85,20 +131,35 @@ export async function markJourneyComplete(
   if (pkgRes.error) throw new Error(pkgRes.error.message);
 
   await ensureCheckInDone(sb, { userId, kioskId: args.kioskId, completedAt: now });
-
-  const kioskRes = await sb
-    .from("kiosks")
-    .update({
-      busy: "free",
-      current_user_id: null,
-      current_nombre: null,
-      screen: "attract",
-      last_heartbeat_at: now,
-    })
-    .eq("id", args.kioskId);
-  if (kioskRes.error) throw new Error(kioskRes.error.message);
+  await freeKiosk(sb, args.kioskId, now);
 
   // Fire-and-forget: sync status to the external Attendees API.
   // Does not throw — a failure here must never block the moderator flow.
   void updateAttendeeStatus(userId, "completed");
+}
+
+/**
+ * Ends a kiosk assignment WITHOUT claiming the visitor finished — a manual
+ * "Liberar" by staff, the stale/orphaned-session sweep (kiosk reload/tab-
+ * close/timeout), or the kiosk's own cancel/reset path. Frees the kiosk and
+ * closes the check-in as "cancelled" (not "done") so it stops blocking
+ * re-assignment, but deliberately leaves attendee_packages.journey_completed_at
+ * untouched and never syncs "completed" to the external API — an abandoned
+ * session must not look like a real one on a later re-scan.
+ */
+export async function endKioskSession(
+  sb: SupabaseClient,
+  args: { userId: string; kioskId: string }
+): Promise<void> {
+  const now = new Date().toISOString();
+  const userId = args.userId.trim();
+  if (!userId) throw new Error("userId required");
+
+  await closeActiveCheckIn(sb, {
+    userId,
+    kioskId: args.kioskId,
+    closedAt: now,
+    status: "cancelled",
+  });
+  await freeKiosk(sb, args.kioskId, now);
 }

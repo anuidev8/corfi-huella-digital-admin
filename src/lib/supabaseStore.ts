@@ -3,13 +3,14 @@
  * Falls back is handled by store.ts when Supabase env is missing.
  */
 
-import { markJourneyComplete } from "@/lib/journeyComplete";
+import { markJourneyComplete, endKioskSession } from "@/lib/journeyComplete";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import {
   getAttendeeByWristband,
   getAttendeeById as getAttendeeByApiId,
   type AttendeeApiFull,
 } from "@/lib/attendeesApiClient";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CorfilinkCheckIn,
   CorfilinkRawPayload,
@@ -25,6 +26,44 @@ import type {
 
 const EVENT_ID = "corfi-2026";
 const OFFLINE_AFTER_MS = 45_000;
+/**
+ * Safety net for kiosks that go silent mid-experience (tab crash, power loss —
+ * anything that skips the kiosk's own unload beacon). A missed heartbeat this
+ * long while still marked busy means the session is orphaned; auto-finish it
+ * so the kiosk frees up without an admin having to click "Liberar".
+ */
+const STALE_SESSION_AFTER_MS = 120_000;
+
+/**
+ * Auto-frees any kiosk whose heartbeat went stale while still busy with a
+ * visitor — but never marks them genuinely completed: a stale heartbeat
+ * means the session was abandoned (tab crash, power loss, walked away), not
+ * that they finished. Uses endKioskSession, not markJourneyComplete.
+ */
+async function sbSweepStaleKiosks(sb: SupabaseClient): Promise<void> {
+  const cutoff = new Date(Date.now() - STALE_SESSION_AFTER_MS).toISOString();
+  const stale = await sb
+    .from("kiosks")
+    .select("id, current_user_id")
+    .eq("busy", "busy")
+    .not("current_user_id", "is", null)
+    .lt("last_heartbeat_at", cutoff);
+  if (stale.error || !stale.data?.length) return;
+
+  for (const kiosk of stale.data as { id: string; current_user_id: string }[]) {
+    try {
+      await endKioskSession(sb, {
+        userId: kiosk.current_user_id,
+        kioskId: kiosk.id,
+      });
+    } catch (err) {
+      console.error(
+        `[sweep] failed to auto-free stale session on ${kiosk.id}:`,
+        err
+      );
+    }
+  }
+}
 
 type PackageRow = {
   user_id: string;
@@ -244,6 +283,7 @@ export async function sbResolveAttendeeIdentity(
 
 export async function sbGetModeratorState(): Promise<ModeratorState> {
   const sb = getSupabaseAdmin();
+  await sbSweepStaleKiosks(sb);
   const [queueRes, kioskRes, pkgRes, delRes] = await Promise.all([
     sb.from("check_ins").select("*").order("checked_in_at", { ascending: false }),
     sb.from("kiosks").select("*").order("id", { ascending: true }),
@@ -292,10 +332,144 @@ function validTimestamp(ts?: string): string {
   return new Date().toISOString();
 }
 
+/**
+ * Upsert attendee_packages from a full Attendees API record — shared by the
+ * webhook ingest path (fallback fields come from the raw Corfilink tap) and
+ * manual-search provisioning (no fallback fields; apiData carries it all).
+ */
+async function upsertAttendeePackageFromApiData(
+  sb: SupabaseClient,
+  userId: string,
+  apiData: AttendeeApiFull,
+  fallback?: { role?: string; company?: string; email?: string }
+): Promise<void> {
+  const ap = apiData.payload?.attendee as Record<string, unknown> | undefined;
+  const overallScore =
+    typeof apiData.payload?.overallScore === "number"
+      ? apiData.payload.overallScore
+      : 0;
+  const headline =
+    typeof apiData.payload?.suggested_aboutme_ik === "string"
+      ? apiData.payload.suggested_aboutme_ik
+      : "";
+  const nameParts = apiData.full_name.trim().split(/\s+/);
+  const firstName =
+    nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0];
+  const lastName =
+    nameParts.length > 1 ? (nameParts[nameParts.length - 1] ?? "") : "";
+
+  const { error: pkgErr } = await sb.from("attendee_packages").upsert(
+    {
+      user_id: userId,
+      first_name: firstName,
+      last_name: lastName,
+      role: (ap?.role as string) || fallback?.role || "—",
+      company:
+        (ap?.company as string) || apiData.company || fallback?.company || "—",
+      sector: (ap?.sector as string) || apiData.sector || "—",
+      email: apiData.email || fallback?.email || "",
+      gender: apiData.gender,
+      overall_score: overallScore,
+      headline,
+      package_status: "ready",
+      payload: apiData.payload ?? {},
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" }
+  );
+  if (pkgErr) throw new Error(pkgErr.message);
+}
+
+/**
+ * Manual-search provisioning: staff picked a real attendee_id from the
+ * attendee_directory roster who hasn't tapped a wristband yet (no
+ * attendee_packages row). Live-fetches the full record from the Attendees
+ * API and upserts it — same effect as a successful wristband match, just
+ * triggered from the kiosk's search screen instead of the webhook.
+ */
+export async function sbProvisionAttendee(
+  userId: string
+): Promise<{ ok: true } | { ok: false; reason: "not_found" }> {
+  const id = userId.trim();
+  if (!id) throw new Error("userId is required");
+  const sb = getSupabaseAdmin();
+
+  const existing = await sb
+    .from("attendee_packages")
+    .select("package_status")
+    .eq("user_id", id)
+    .maybeSingle();
+  if (existing.error) throw new Error(existing.error.message);
+  if (existing.data?.package_status === "ready") {
+    return { ok: true };
+  }
+
+  const apiData = await getAttendeeByApiId(id);
+  if (!apiData) return { ok: false, reason: "not_found" };
+
+  await upsertAttendeePackageFromApiData(sb, id, apiData);
+  return { ok: true };
+}
+
+/**
+ * Admin "switch to pending" override (moderator's Registrados/Cola status
+ * toggle) — resets an attendee back to a fresh, assignable state: clears
+ * journey_completed_at (so the kiosk stops treating them as already done),
+ * retires any old "done" check_ins rows to "cancelled" (otherwise they'd
+ * keep showing in Registrados — that's the whole bug this fixes), and
+ * ensures they have a "pending" check_ins row so they actually show up in
+ * Cola, ready to assign. Leaves an existing pending/assigned/in_session
+ * check-in alone rather than creating a duplicate.
+ */
+export async function sbResetAttendeeToPending(userId: string): Promise<void> {
+  const id = userId.trim();
+  if (!id) throw new Error("userId is required");
+  const sb = getSupabaseAdmin();
+
+  const pkgRes = await sb
+    .from("attendee_packages")
+    .update({ journey_completed_at: null, updated_at: new Date().toISOString() })
+    .eq("user_id", id)
+    .select("first_name, last_name, role, company, email, package_status")
+    .maybeSingle();
+  if (pkgRes.error) throw new Error(pkgRes.error.message);
+  const pkg = pkgRes.data;
+  if (!pkg) throw new Error(`attendee_not_found:${id}`);
+
+  const doneRes = await sb
+    .from("check_ins")
+    .update({ status: "cancelled" })
+    .eq("user_id", id)
+    .eq("status", "done");
+  if (doneRes.error) throw new Error(doneRes.error.message);
+
+  const active = await sb
+    .from("check_ins")
+    .select("id")
+    .eq("user_id", id)
+    .in("status", ["pending", "assigned", "in_session"])
+    .limit(1)
+    .maybeSingle();
+  if (active.error) throw new Error(active.error.message);
+  if (active.data) return;
+
+  const nombre = [pkg.first_name, pkg.last_name].filter(Boolean).join(" ") || id;
+  const ins = await sb.from("check_ins").insert({
+    user_id: id,
+    nombre,
+    cargo: pkg.role || "—",
+    company: pkg.company || "—",
+    email: pkg.email || "",
+    package_status: pkg.package_status,
+    status: "pending",
+  });
+  if (ins.error) throw new Error(ins.error.message);
+}
+
 export async function sbIngestCorfilinkCheckIn(
   payload: CorfilinkCheckIn,
   apiData?: AttendeeApiFull | null
-): Promise<{ entry: QueueEntry; created: boolean }> {
+): Promise<{ entry: QueueEntry; created: boolean; alreadyCompleted?: boolean }> {
   const sb = getSupabaseAdmin();
   const userId = payload.userId.trim();
   if (!userId) throw new Error("userId is required");
@@ -313,42 +487,67 @@ export async function sbIngestCorfilinkCheckIn(
     return { entry: mapCheckIn(active.data as CheckInRow), created: false };
   }
 
+  // Check whether the journey was previously completed — if so, this is a
+  // repeat tap of a wristband that already finished. Don't re-queue them:
+  // return their last check-in as a no-op instead of creating a fresh
+  // "pending" row (which would let a moderator re-assign them to a kiosk
+  // and restart the whole flow).
+  const pkgCheck = await sb
+    .from("attendee_packages")
+    .select("journey_completed_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (pkgCheck.error) throw new Error(pkgCheck.error.message);
+  const alreadyCompleted = Boolean(pkgCheck.data?.journey_completed_at);
+
+  if (alreadyCompleted) {
+    const last = await sb
+      .from("check_ins")
+      .select("*")
+      .eq("user_id", userId)
+      .order("checked_in_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (last.error) throw new Error(last.error.message);
+    if (last.data) {
+      return {
+        entry: mapCheckIn(last.data as CheckInRow),
+        created: false,
+        alreadyCompleted: true,
+      };
+    }
+    // No check_ins row exists at all (journey_completed_at was set some
+    // other way, e.g. the admin status toggle) — synthesize one so the
+    // caller still gets a QueueEntry-shaped response, without inserting
+    // anything into the queue.
+    return {
+      entry: {
+        id: `already-completed_${userId}`,
+        userId,
+        nombre,
+        cargo: payload.cargo?.trim() || "—",
+        company: payload.company?.trim() || "—",
+        email: payload.email?.trim() || "",
+        eventId: payload.eventId?.trim() || EVENT_ID,
+        status: "done",
+        packageStatus: "ready",
+        kioskId: null,
+        checkedInAt: validTimestamp(payload.timestamp),
+        assignedAt: null,
+        completedAt: pkgCheck.data?.journey_completed_at ?? null,
+      },
+      created: false,
+      alreadyCompleted: true,
+    };
+  }
+
   // ── Upsert attendee_packages from API data when available ─────────────────
   if (apiData) {
-    const ap = apiData.payload?.attendee as Record<string, unknown> | undefined;
-    const overallScore =
-      typeof apiData.payload?.overallScore === "number"
-        ? apiData.payload.overallScore
-        : 0;
-    const headline =
-      typeof apiData.payload?.suggested_aboutme_ik === "string"
-        ? apiData.payload.suggested_aboutme_ik
-        : "";
-    const nameParts = apiData.full_name.trim().split(/\s+/);
-    const firstName =
-      nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0];
-    const lastName =
-      nameParts.length > 1 ? (nameParts[nameParts.length - 1] ?? "") : "";
-
-    const { error: pkgErr } = await sb.from("attendee_packages").upsert(
-      {
-        user_id: userId,
-        first_name: firstName,
-        last_name: lastName,
-        role: (ap?.role as string) || payload.cargo?.trim() || "—",
-        company:
-          (ap?.company as string) || apiData.company || payload.company?.trim() || "—",
-        sector: (ap?.sector as string) || apiData.sector || "—",
-        email: apiData.email || payload.email?.trim() || "",
-        overall_score: overallScore,
-        headline,
-        package_status: "ready",
-        payload: apiData.payload ?? {},
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" }
-    );
-    if (pkgErr) throw new Error(pkgErr.message);
+    await upsertAttendeePackageFromApiData(sb, userId, apiData, {
+      role: payload.cargo?.trim(),
+      company: payload.company?.trim(),
+      email: payload.email?.trim(),
+    });
   } else {
     // No API data — create a stub only if no package exists yet
     const existing = await sb
@@ -401,6 +600,7 @@ export async function sbIngestCorfilinkCheckIn(
   return {
     entry: mapCheckIn(insertedQueue.data as CheckInRow),
     created: true,
+    alreadyCompleted,
   };
 }
 
@@ -422,7 +622,16 @@ export async function sbAssignToKiosk(args: {
     .single();
   if (entryRes.error) throw new Error(entryRes.error.message);
   const entry = entryRes.data as CheckInRow;
-  if (entry.status !== "pending" && entry.status !== "assigned") {
+  // "done" is allowed too — the moderator doesn't gate on completion status
+  // (e.g. testing the kiosk's own pending/completed views, or a staff
+  // override). The kiosk is the one that checks attendee_packages.
+  // journey_completed_at at assignment time and decides what to show —
+  // that's the actual source of truth, not this queue entry's status.
+  if (
+    entry.status !== "pending" &&
+    entry.status !== "assigned" &&
+    entry.status !== "done"
+  ) {
     throw new Error(`Cannot assign from status ${entry.status}`);
   }
 
@@ -516,7 +725,8 @@ export async function sbAssignToKiosk(args: {
 
 export async function sbReleaseKiosk(
   kioskId: string,
-  userId?: string | null
+  userId?: string | null,
+  completed = false
 ): Promise<Kiosk> {
   const sb = getSupabaseAdmin();
   const kioskRes = await sb.from("kiosks").select("*").eq("id", kioskId).single();
@@ -541,7 +751,11 @@ export async function sbReleaseKiosk(
   }
 
   if (uid) {
-    await markJourneyComplete(sb, { userId: uid, kioskId });
+    if (completed) {
+      await markJourneyComplete(sb, { userId: uid, kioskId });
+    } else {
+      await endKioskSession(sb, { userId: uid, kioskId });
+    }
   } else {
     const upd = await sb
       .from("kiosks")
@@ -569,6 +783,7 @@ export async function sbHeartbeatKiosk(args: {
   userId?: string | null;
 }): Promise<Kiosk> {
   const sb = getSupabaseAdmin();
+  await sbSweepStaleKiosks(sb);
   const patch: Partial<KioskRow> = {
     last_heartbeat_at: new Date().toISOString(),
   };
