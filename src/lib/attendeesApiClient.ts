@@ -33,6 +33,8 @@ export type AttendeeApiFull = {
   gender: Gender | null;
   /** Analysis payload with media fields removed. null if API returned no payload. */
   payload: Record<string, unknown> | null;
+  /** External API's own completion status — the source of truth to mirror locally. */
+  status: "pending" | "completed" | null;
 };
 
 function baseUrl(): string {
@@ -140,6 +142,10 @@ export async function getAttendeeById(
       }
     }
 
+    const rawStatus = data.status as string | undefined;
+    const status =
+      rawStatus === "pending" || rawStatus === "completed" ? rawStatus : null;
+
     return {
       attendee_id: data.attendee_id as string,
       full_name: (data.full_name as string) || "",
@@ -148,6 +154,7 @@ export async function getAttendeeById(
       sector: (data.sector as string) || "",
       gender: normalizeGender(data.gender as string | undefined),
       payload: cleanPayload,
+      status,
     };
   } catch (err) {
     console.error("[attendees-api] id lookup failed:", err);

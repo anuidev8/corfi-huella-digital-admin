@@ -483,7 +483,15 @@ export async function sbIngestCorfilinkCheckIn(
     .limit(1)
     .maybeSingle();
   if (active.error) throw new Error(active.error.message);
-  if (active.data) {
+
+  // The external Attendees API is authoritative for completion — if it says
+  // this attendee is already done, mirror that into Supabase rather than
+  // trusting a possibly-stale local `active` row or `journey_completed_at`
+  // (e.g. completed in a prior event/environment, or flipped directly on
+  // the API side — Supabase must reflect it, not re-queue them).
+  const apiCompleted = apiData?.status === "completed";
+
+  if (active.data && !apiCompleted) {
     return { entry: mapCheckIn(active.data as CheckInRow), created: false };
   }
 
@@ -498,9 +506,46 @@ export async function sbIngestCorfilinkCheckIn(
     .eq("user_id", userId)
     .maybeSingle();
   if (pkgCheck.error) throw new Error(pkgCheck.error.message);
-  const alreadyCompleted = Boolean(pkgCheck.data?.journey_completed_at);
+  let completedAt = pkgCheck.data?.journey_completed_at ?? null;
+  const alreadyCompleted = Boolean(completedAt) || apiCompleted;
+
+  if (apiCompleted && !completedAt) {
+    // Supabase doesn't know yet — backfill from the API so local state
+    // catches up (package row first, in case it doesn't exist at all).
+    completedAt = new Date().toISOString();
+    if (apiData) {
+      await upsertAttendeePackageFromApiData(sb, userId, apiData, {
+        role: payload.cargo?.trim(),
+        company: payload.company?.trim(),
+        email: payload.email?.trim(),
+      });
+    }
+    const backfill = await sb
+      .from("attendee_packages")
+      .update({ journey_completed_at: completedAt, updated_at: completedAt })
+      .eq("user_id", userId);
+    if (backfill.error) throw new Error(backfill.error.message);
+  }
 
   if (alreadyCompleted) {
+    if (active.data) {
+      // A stale pending/assigned row existed but the API says this
+      // attendee already finished — close it out instead of leaving them
+      // stuck in the moderator's "pendiente" queue.
+      const closed = await sb
+        .from("check_ins")
+        .update({ status: "done", completed_at: completedAt })
+        .eq("id", (active.data as CheckInRow).id)
+        .select("*")
+        .single();
+      if (closed.error) throw new Error(closed.error.message);
+      return {
+        entry: mapCheckIn(closed.data as CheckInRow),
+        created: false,
+        alreadyCompleted: true,
+      };
+    }
+
     const last = await sb
       .from("check_ins")
       .select("*")
@@ -517,26 +562,34 @@ export async function sbIngestCorfilinkCheckIn(
       };
     }
     // No check_ins row exists at all (journey_completed_at was set some
-    // other way, e.g. the admin status toggle) — synthesize one so the
-    // caller still gets a QueueEntry-shaped response, without inserting
-    // anything into the queue.
-    return {
-      entry: {
-        id: `already-completed_${userId}`,
-        userId,
+    // other way, e.g. the admin status toggle, or just backfilled above) —
+    // insert a real "done" row instead of only returning a synthesized
+    // object. Without a real row, this attendee only exists in the
+    // moderator UI as a client-synthesized `pkg-<userId>` entry (see
+    // ModeratorBoard.tsx's `completed` list), whose fake id isn't a valid
+    // check_ins uuid — passing it anywhere that queries check_ins by id
+    // (e.g. re-assigning them to a kiosk) throws
+    // `invalid input syntax for type uuid`.
+    const inserted = await sb
+      .from("check_ins")
+      .insert({
+        user_id: userId,
         nombre,
         cargo: payload.cargo?.trim() || "—",
         company: payload.company?.trim() || "—",
         email: payload.email?.trim() || "",
-        eventId: payload.eventId?.trim() || EVENT_ID,
+        event_id: payload.eventId?.trim() || EVENT_ID,
         status: "done",
-        packageStatus: "ready",
-        kioskId: null,
-        checkedInAt: validTimestamp(payload.timestamp),
-        assignedAt: null,
-        completedAt: pkgCheck.data?.journey_completed_at ?? null,
-      },
-      created: false,
+        package_status: "ready",
+        checked_in_at: validTimestamp(payload.timestamp),
+        completed_at: completedAt,
+      })
+      .select("*")
+      .single();
+    if (inserted.error) throw new Error(inserted.error.message);
+    return {
+      entry: mapCheckIn(inserted.data as CheckInRow),
+      created: true,
       alreadyCompleted: true,
     };
   }
